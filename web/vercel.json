@@ -12,6 +12,20 @@
       "destination": "/api/index.ts"
     },
     {
+      "source": "/",
+      "has": [
+        {
+          "type": "query",
+          "key": "shop"
+        }
+      ],
+      "destination": "/index.html"
+    },
+    {
+      "source": "/",
+      "destination": "/landing.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
