@@ -19,7 +19,11 @@ export function errorHandler(
     err.message?.includes("GraphQL Client: Forbidden") ||
     err.message?.includes("Forbidden")
   ) {
-    res.status(401).json({
+    const shop = req.query["shop"] || req.headers["x-shopify-shop-domain"] || "";
+    const authUrl = `/api/auth${shop ? `?shop=${shop}` : ""}`;
+    
+    res.setHeader("X-Shopify-API-Request-Failure-Reauthorize-Url", authUrl);
+    res.status(403).json({
       success: false,
       error: "Your Shopify session has expired or requires new permissions. Please reinstall the app.",
       details: err.message, // Added for debugging
