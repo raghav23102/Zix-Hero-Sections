@@ -13,10 +13,15 @@ export function errorHandler(
   console.error("[Error]", err.message, err.stack);
 
   // Shopify auth errors
-  if (err.message?.includes("session") || err.message?.includes("HMAC")) {
+  if (
+    err.message?.includes("session") || 
+    err.message?.includes("HMAC") ||
+    err.message?.includes("GraphQL Client: Forbidden") ||
+    err.message?.includes("Forbidden")
+  ) {
     res.status(401).json({
       success: false,
-      error: "Your Shopify session has expired. Please reinstall the app.",
+      error: "Your Shopify session has expired or requires new permissions. Please reinstall the app.",
       details: err.message, // Added for debugging
     });
     return;
