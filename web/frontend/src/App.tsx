@@ -24,7 +24,7 @@ import { setAppBridgeInstance } from "./lib/api";
 const urlParams = new URLSearchParams(window.location.search);
 export const appBridgeConfig = {
   host: urlParams.get("host") || "",
-  apiKey: process.env.SHOPIFY_API_KEY || "",
+  apiKey: (window as any).SHOPIFY_API_KEY || process.env.SHOPIFY_API_KEY || "",
   forceRedirect: true
 };
 

@@ -9,6 +9,7 @@ import cors from "cors";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 import { shopifyApp } from "@shopify/shopify-app-express";
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
@@ -140,9 +141,18 @@ app.get("/", (req, res, next) => {
 const clientDistPath = path.resolve(__dirname, "../client");
 const htmlPath = path.resolve(__dirname, "index.html");
 if (process.env["NODE_ENV"] === "production") {
-  app.use(express.static(clientDistPath, { maxAge: "1y" }));
+  app.use(express.static(clientDistPath, { maxAge: "1y", index: false }));
   app.get("*", shopify.ensureInstalledOnShop(), (_req, res) => {
-    res.sendFile(htmlPath);
+    try {
+      let html = fs.readFileSync(htmlPath, "utf-8");
+      html = html.replace(
+        "<head>",
+        `<head><script>window.SHOPIFY_API_KEY = "${process.env.SHOPIFY_API_KEY || ""}";</script>`
+      );
+      res.send(html);
+    } catch (err) {
+      res.sendFile(htmlPath);
+    }
   });
 } else {
   // In dev, serve a redirect to the Vite dev server
