@@ -3,10 +3,14 @@
   "version": "1.0.0",
   "description": "Beautiful Shopify Hero Sections. No Coding Required.",
   "private": true,
+  "engines": {
+    "node": "20.x"
+  },
   "workspaces": [
     "web"
   ],
   "scripts": {
+    "postinstall": "npm run db:generate --workspace=web",
     "dev": "npm run dev --workspace=web",
     "build": "npm run build --workspace=web",
     "start": "npm run start --workspace=web",

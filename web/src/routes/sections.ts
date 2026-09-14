@@ -4,11 +4,12 @@
 
 import { Router } from "express";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../db.js";
 import { requireShop } from "../middleware/requireShop.js";
 import { canCreateSection, syncActiveSections } from "../services/usageService.js";
-import { isTemplateAccessible } from "../../shared/templates.js";
-import { SectionStatus } from "../../shared/types.js";
+import { isTemplateAccessible } from "../shared/templates.js";
+import { SectionStatus } from "../shared/types.js";
 
 export const sectionsRouter = Router();
 sectionsRouter.use(requireShop);
@@ -116,7 +117,7 @@ sectionsRouter.post("/", async (req, res) => {
       shopId: shop.id,
       name,
       templateId,
-      configuration: configuration as Record<string, unknown>,
+      configuration: (configuration ?? {}) as Prisma.InputJsonObject,
       status: "ACTIVE",
       isPublished: false,
     },
@@ -162,7 +163,7 @@ sectionsRouter.put("/:id", async (req, res) => {
     data: {
       ...(parsed.data.name && { name: parsed.data.name }),
       ...(parsed.data.configuration && {
-        configuration: parsed.data.configuration as Record<string, unknown>,
+        configuration: parsed.data.configuration as Prisma.InputJsonObject,
       }),
       ...(parsed.data.status && { status: parsed.data.status }),
       ...(typeof parsed.data.isPublished === "boolean" && {
@@ -204,7 +205,7 @@ sectionsRouter.post("/:id/duplicate", async (req, res) => {
       shopId: shop.id,
       name: `${original.name} (Copy)`,
       templateId: original.templateId,
-      configuration: original.configuration as Record<string, unknown>,
+      configuration: (original.configuration ?? {}) as Prisma.InputJsonObject,
       status: "INACTIVE",
       isPublished: false,
     },

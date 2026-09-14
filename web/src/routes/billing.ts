@@ -9,7 +9,7 @@ import {
   createShopifySubscription,
   cancelShopifySubscription,
 } from "../services/billingService.js";
-import { Plan, PLAN_LIMITS, PLAN_PRICES } from "../../shared/types.js";
+import { Plan, PLAN_LIMITS, PLAN_PRICES } from "../shared/types.js";
 
 export const billingRouter = Router();
 billingRouter.use(requireShop);

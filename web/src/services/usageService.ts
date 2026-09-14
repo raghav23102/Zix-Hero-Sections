@@ -3,7 +3,7 @@
 // ============================================================
 
 import { prisma } from "../db.js";
-import { Plan, PLAN_LIMITS, UsageData } from "../../shared/types.js";
+import { Plan, PLAN_LIMITS, UsageData } from "../shared/types.js";
 
 export async function getUsageData(
   shopDomain: string

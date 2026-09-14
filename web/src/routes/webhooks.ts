@@ -44,19 +44,9 @@ function verifyShopifyWebhook(
   next();
 }
 
-// Parse raw body for HMAC verification
-webhooksRouter.use(
-  import("express").then
-    ? (req, res, next) => next()
-    : (req, res, next) => next()
-);
-
 // POST /api/webhooks/app-uninstalled
 webhooksRouter.post(
   "/app-uninstalled",
-  import("express").then
-    ? (req, res, next) => next()
-    : (req, res, next) => next(),
   async (req, res) => {
     const shopDomain = req.headers["x-shopify-shop-domain"] as string;
 

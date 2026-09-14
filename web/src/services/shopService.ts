@@ -3,7 +3,7 @@
 // ============================================================
 
 import { prisma } from "../db.js";
-import { Plan } from "../../shared/types.js";
+import { Plan } from "../shared/types.js";
 
 interface ShopifySession {
   shop: string;
