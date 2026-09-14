@@ -78,8 +78,11 @@ app.get("/api/diagnostic", async (req, res) => {
       apiSecretLength: process.env.SHOPIFY_API_SECRET?.length || 0,
       hasAppUrl: !!process.env.SHOPIFY_APP_URL,
       hasDbUrl: !!process.env.DATABASE_URL,
+      hasScopes: !!process.env.SCOPES,
+      scopes: process.env.SCOPES || "MISSING",
       dbStatus: typeof dbTest === "number" ? "Connected! Sessions count: " + dbTest : "DB Error: " + dbTest,
       cookies: req.cookies,
+      appUrl: process.env.SHOPIFY_APP_URL || "MISSING"
     });
   } catch (err) {
     res.json({ error: String(err) });
