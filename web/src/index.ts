@@ -133,7 +133,7 @@ app.get(
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[Auth Callback] Shopify OAuth error:", msg);
       // Show a user-friendly error page instead of blank 500
-      res.status(500).send(
+      res.status(400).send(
         `<html><body style="font-family:sans-serif;padding:40px;">
           <h2>Authentication Error</h2>
           <p><strong>${msg}</strong></p>
