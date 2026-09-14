@@ -6,7 +6,6 @@ import "dotenv/config";
 import "express-async-errors";
 import express from "express";
 import cors from "cors";
-import helmet from "helmet";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import path from "path";
@@ -53,27 +52,7 @@ const shopify = shopifyApp({
 
 const app = express();
 
-// ---- Security & Middleware ----
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        frameSrc: ["'self'", "https://*.myshopify.com", "https://admin.shopify.com"],
-        scriptSrc: [
-          "'self'",
-          "'unsafe-inline'",
-          "https://cdn.shopify.com",
-          "https://*.myshopify.com",
-        ],
-        imgSrc: ["'self'", "data:", "https:", "blob:"],
-        connectSrc: ["'self'", "https://*.myshopify.com", "wss://*.myshopify.com"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.shopify.com"],
-        fontSrc: ["'self'", "https:", "data:"],
-      },
-    },
-  })
-);
+
 
 app.use(morgan("combined"));
 app.use(cookieParser());
