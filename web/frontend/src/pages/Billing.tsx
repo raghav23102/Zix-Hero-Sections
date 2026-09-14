@@ -93,7 +93,10 @@ export function Billing() {
     try {
       setSubscribing(planId);
       setError(null);
-      const returnUrl = `${window.location.origin}/billing?confirmed=true`;
+      const urlParams = new URLSearchParams(window.location.search);
+      const hostParam = urlParams.get("host") || "";
+      const shopParam = urlParams.get("shop") || "";
+      const returnUrl = `${window.location.origin}/billing?confirmed=true&host=${hostParam}&shop=${shopParam}`;
       const response = await billingApi.subscribe(planId, returnUrl);
 
       if (response.data?.confirmationUrl) {
