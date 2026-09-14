@@ -22,7 +22,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: resolve(__dirname, "dist/client"),
+    outDir: "../dist/client",
     emptyOutDir: true,
     rollupOptions: {
       output: {
