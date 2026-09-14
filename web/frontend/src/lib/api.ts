@@ -9,7 +9,12 @@ import type {
 } from "@shared/types";
 
 import { getSessionToken } from "@shopify/app-bridge-utils";
-import { shopifyAppInstance } from "../App";
+
+let globalAppInstance: any = null;
+
+export function setAppBridgeInstance(app: any) {
+  globalAppInstance = app;
+}
 
 const BASE_URL = "/api";
 
@@ -18,10 +23,12 @@ async function request<T>(
   options?: RequestInit
 ): Promise<T> {
   let token = "";
-  try {
-    token = await getSessionToken(shopifyAppInstance);
-  } catch (e) {
-    console.warn("Could not retrieve session token", e);
+  if (globalAppInstance) {
+    try {
+      token = await getSessionToken(globalAppInstance);
+    } catch (e) {
+      console.warn("Could not retrieve session token", e);
+    }
   }
 
   const response = await fetch(`${BASE_URL}${path}`, {
