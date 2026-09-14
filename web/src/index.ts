@@ -191,14 +191,35 @@ app.use("/api/billing", shopify.validateAuthenticatedSession(), billingRouter);
 app.use("/api/settings", shopify.validateAuthenticatedSession(), settingsRouter);
 app.use("/api/shop", shopify.validateAuthenticatedSession(), shopRouter);
 
-// ---- API Routes (require Shopify session) ----
 // Vercel's Edge Network serves them via vercel.json routing.
 if (process.env["NODE_ENV"] !== "production") {
-  // In dev, serve a redirect to the Vite dev server
-  app.get("*", shopify.ensureInstalledOnShop(), (_req, res) => {
-    res.redirect(`http://localhost:3001${_req.path}`);
+  // In dev, serve a redirect to the Vite dev server (without ensureInstalledOnShop)
+  app.get("*", (_req, res, next) => {
+    if (_req.originalUrl.startsWith("/api/")) return next();
+    res.redirect(`http://localhost:3001${_req.originalUrl}`);
   });
 }
+
+// ---- Frontend Static Files & Catch-all ----
+const frontendDist = path.join(__dirname, "../frontend/dist");
+
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist, { index: false }));
+} else {
+  console.warn("Frontend dist folder not found. Run 'npm run build' in web/frontend.");
+}
+
+app.use("/*", async (req, res, _next) => {
+  // If the path is an API path, return 404 to avoid returning HTML
+  if (req.originalUrl.startsWith("/api/")) {
+    return res.status(404).json({ success: false, error: "API route not found" });
+  }
+  
+  return res
+    .status(200)
+    .set("Content-Type", "text/html")
+    .send(fs.readFileSync(path.join(frontendDist, "index.html")));
+});
 
 // ---- Error Handler ----
 app.use(errorHandler);
