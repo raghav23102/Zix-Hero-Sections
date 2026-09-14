@@ -45,9 +45,15 @@ async function request<T>(
     // Check for Shopify Reauthorization Header
     const reauthUrl = response.headers.get("X-Shopify-API-Request-Failure-Reauthorize-Url");
     if (response.status === 403 && reauthUrl) {
-      const absoluteUrl = reauthUrl.startsWith("http") 
+      let absoluteUrl = reauthUrl.startsWith("http") 
         ? reauthUrl 
         : window.location.origin + (reauthUrl.startsWith("/") ? "" : "/") + reauthUrl;
+        
+      // Ensure the shop parameter is present, otherwise Shopify auth crashes
+      const shopParam = new URLSearchParams(window.location.search).get("shop");
+      if (shopParam && !absoluteUrl.includes("shop=")) {
+        absoluteUrl += (absoluteUrl.includes("?") ? "&" : "?") + `shop=${shopParam}`;
+      }
         
       if (globalAppInstance) {
         const redirect = Redirect.create(globalAppInstance);
