@@ -13,10 +13,11 @@ export function errorHandler(
   console.error("[Error]", err.message, err.stack);
 
   // Shopify auth errors
-  if (err.message?.includes("Shopify") || err.message?.includes("session")) {
+  if (err.message?.includes("Shopify") || err.message?.includes("session") || err.message?.includes("HMAC")) {
     res.status(401).json({
       success: false,
       error: "Your Shopify session has expired. Please reinstall the app.",
+      details: err.message, // Added for debugging
     });
     return;
   }
@@ -26,6 +27,7 @@ export function errorHandler(
     res.status(400).json({
       success: false,
       error: "Invalid request data. Please check your inputs.",
+      details: err.message,
     });
     return;
   }
@@ -35,13 +37,15 @@ export function errorHandler(
     res.status(500).json({
       success: false,
       error: "Database error. Please try again.",
+      details: err.message,
     });
     return;
   }
 
-  // Generic error — never expose stack traces
+  // Generic error
   res.status(500).json({
     success: false,
     error: "Something went wrong. Please try again.",
+    details: err.message,
   });
 }
