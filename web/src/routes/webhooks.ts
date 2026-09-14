@@ -44,6 +44,23 @@ function verifyShopifyWebhook(
   next();
 }
 
+// Apply HMAC verification to all webhook routes in this router
+webhooksRouter.use(verifyShopifyWebhook);
+
+// ---- Mandatory Compliance Webhooks (GDPR) ----
+webhooksRouter.post("/customers/data_request", async (req, res) => {
+  // Shopify requires returning 200 OK
+  res.status(200).send("OK");
+});
+
+webhooksRouter.post("/customers/redact", async (req, res) => {
+  res.status(200).send("OK");
+});
+
+webhooksRouter.post("/shop/redact", async (req, res) => {
+  res.status(200).send("OK");
+});
+
 // POST /api/webhooks/app-uninstalled
 webhooksRouter.post(
   "/app-uninstalled",
