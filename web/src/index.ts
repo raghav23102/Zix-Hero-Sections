@@ -121,6 +121,21 @@ app.use("/api/billing", shopify.validateAuthenticatedSession(), billingRouter);
 app.use("/api/settings", shopify.validateAuthenticatedSession(), settingsRouter);
 app.use("/api/shop", shopify.validateAuthenticatedSession(), shopRouter);
 
+// ---- Public Landing Page Interceptor ----
+app.get("/", (req, res, next) => {
+  if (req.query.shop) {
+    // App launched from Shopify Admin. Let the wildcard route handle it.
+    return next();
+  }
+  // Public visit without shop query param. Serve the landing page.
+  const landingPagePath = path.resolve(__dirname, "../../client/landing.html");
+  if (process.env["NODE_ENV"] === "production") {
+    return res.sendFile(landingPagePath);
+  } else {
+    return res.redirect(`http://localhost:3001/landing.html`);
+  }
+});
+
 // ---- Serve React App in Production ----
 const clientDistPath = path.resolve(__dirname, "../../client");
 const htmlPath = path.resolve(__dirname, "index.html");
