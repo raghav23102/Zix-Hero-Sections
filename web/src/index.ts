@@ -147,9 +147,10 @@ app.use("/api/shop", shopify.validateAuthenticatedSession(), shopRouter);
 
 // ---- App Config Route for Frontend ----
 app.get("/api/config", (req, res) => {
+  const SHOPIFY_APP_URL = process.env["SHOPIFY_APP_URL"] ?? "";
   res.json({
     apiKey: process.env.SHOPIFY_API_KEY || "",
-    hostName: shopify.config.api.hostName
+    hostName: SHOPIFY_APP_URL.replace(/https?:\/\//, "").replace(/\/$/, "")
   });
 });
 
