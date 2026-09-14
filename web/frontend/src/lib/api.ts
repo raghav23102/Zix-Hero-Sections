@@ -9,6 +9,7 @@ import type {
 } from "@shared/types";
 
 import { getSessionToken } from "@shopify/app-bridge-utils";
+import { Redirect } from "@shopify/app-bridge/actions";
 
 let globalAppInstance: any = null;
 
@@ -41,6 +42,18 @@ async function request<T>(
   });
 
   if (!response.ok) {
+    // Check for Shopify Reauthorization Header
+    const reauthUrl = response.headers.get("X-Shopify-API-Request-Failure-Reauthorize-Url");
+    if (response.status === 403 && reauthUrl) {
+      if (globalAppInstance) {
+        const redirect = Redirect.create(globalAppInstance);
+        redirect.dispatch(Redirect.Action.REMOTE, reauthUrl);
+      } else {
+        window.location.href = reauthUrl;
+      }
+      return new Promise(() => {}) as Promise<T>; // Never resolve to stop execution
+    }
+
     const errorBody = await response.json().catch(() => ({}));
     const message =
       (errorBody as { error?: string }).error ??
