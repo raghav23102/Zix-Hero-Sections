@@ -45,11 +45,15 @@ async function request<T>(
     // Check for Shopify Reauthorization Header
     const reauthUrl = response.headers.get("X-Shopify-API-Request-Failure-Reauthorize-Url");
     if (response.status === 403 && reauthUrl) {
+      const absoluteUrl = reauthUrl.startsWith("http") 
+        ? reauthUrl 
+        : window.location.origin + (reauthUrl.startsWith("/") ? "" : "/") + reauthUrl;
+        
       if (globalAppInstance) {
         const redirect = Redirect.create(globalAppInstance);
-        redirect.dispatch(Redirect.Action.REMOTE, reauthUrl);
+        redirect.dispatch(Redirect.Action.REMOTE, absoluteUrl);
       } else {
-        window.location.href = reauthUrl;
+        window.parent.location.href = absoluteUrl;
       }
       return new Promise(() => {}) as Promise<T>; // Never resolve to stop execution
     }
