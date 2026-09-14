@@ -137,6 +137,12 @@
 
         shopUrl = shopUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
+        // Automatically extract store name from admin.shopify.com URLs
+        const adminMatch = shopUrl.match(/admin\.shopify\.com\/store\/([^/?]+)/);
+        if (adminMatch) {
+          shopUrl = adminMatch[1] + '.myshopify.com';
+        }
+
         if (!shopUrl.endsWith('.myshopify.com')) {
           if (shopUrl.includes('.')) {
             errorMsg.textContent = 'Please use your .myshopify.com domain, not your custom domain.';
