@@ -3,124 +3,56 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Zix Hero Sections - Shopify App</title>
-    <meta name="description" content="Build stunning Shopify hero sections in minutes without coding." />
+    <title>Install Zix Hero Sections</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              brand: {
-                50: '#f0fdfa',
-                100: '#ccfbf1',
-                500: '#14b8a6', // teal-500
-                600: '#0d9488', // teal-600
-                900: '#134e4a',
-              }
-            },
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-            }
-          }
-        }
-      }
-    </script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <style>
-      body {
-        font-family: 'Inter', sans-serif;
-      }
-      .gradient-text {
-        background: linear-gradient(135deg, #14b8a6 0%, #3b82f6 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-      }
-      .gradient-bg {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-      }
-      .glass-card {
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-      }
+      body { font-family: 'Inter', sans-serif; background-color: #f8f9fa; }
     </style>
   </head>
-  <body class="gradient-bg min-h-screen text-slate-100 flex flex-col selection:bg-brand-500 selection:text-white">
+  <body class="min-h-screen flex items-center justify-center p-4">
     
-    <!-- Navbar -->
-    <nav class="w-full max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <svg class="w-8 h-8 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-        </svg>
-        <span class="text-xl font-bold tracking-tight text-white">Zix Sections</span>
-      </div>
-      <div>
-        <a href="#install" class="text-sm font-medium hover:text-brand-500 transition-colors">Install App</a>
-      </div>
-    </nav>
-
-    <!-- Main Content -->
-    <main class="flex-grow flex items-center justify-center px-6 py-12">
-      <div class="max-w-4xl mx-auto text-center">
-        
-        <!-- Hero Section -->
-        <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 leading-tight">
-          Stunning Hero Sections for <br class="hidden md:block" />
-          <span class="gradient-text">Shopify Brands</span>
-        </h1>
-        
-        <p class="text-lg md:text-xl text-slate-400 mb-12 max-w-2xl mx-auto leading-relaxed">
-          Instantly upgrade your storefront with high-converting, beautifully designed hero sections. No coding required. Just install and customize.
+    <!-- Simple Banner -->
+    <div class="w-full max-w-4xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row">
+      
+      <!-- Left side: Information -->
+      <div class="bg-blue-600 text-white p-10 md:w-1/2 flex flex-col justify-center">
+        <h1 class="text-3xl font-bold mb-4">Zix Hero Sections</h1>
+        <p class="text-blue-100 text-lg">
+          Add beautiful, high-converting hero banners to your Shopify store in seconds. No coding required.
         </p>
-
-        <!-- Install Card -->
-        <div id="install" class="glass-card rounded-3xl p-8 md:p-12 max-w-xl mx-auto shadow-2xl relative overflow-hidden">
-          
-          <!-- Decorative blurred orb -->
-          <div class="absolute -top-24 -right-24 w-48 h-48 bg-brand-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 pointer-events-none"></div>
-          
-          <h2 class="text-2xl font-bold text-white mb-2">Install Zix Hero Sections</h2>
-          <p class="text-slate-400 text-sm mb-8">Enter your Shopify store URL to securely authenticate and install the app.</p>
-          
-          <form id="install-form" class="space-y-4">
-            <div class="relative">
-              <input 
-                type="text" 
-                id="shop-url" 
-                name="shop" 
-                required 
-                placeholder="yourstore.myshopify.com" 
-                class="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-5 py-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-all"
-              >
-              <div id="error-msg" class="text-red-400 text-sm mt-2 text-left hidden">Please enter a valid .myshopify.com URL</div>
-            </div>
-            
-            <button 
-              type="submit" 
-              class="w-full bg-brand-500 hover:bg-brand-600 text-white font-semibold rounded-xl px-5 py-4 transition-all transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-brand-500/25"
-            >
-              <span>Install to Shopify</span>
-              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </button>
-          </form>
-          
-          <p class="text-xs text-slate-500 mt-6 text-center">
-            By installing, you agree to our Terms of Service and Privacy Policy.
-          </p>
-        </div>
-
       </div>
-    </main>
 
-    <!-- Footer -->
-    <footer class="w-full max-w-7xl mx-auto px-6 py-8 text-center text-slate-500 text-sm">
-      <p>&copy; 2024 Zix Hero Sections. All rights reserved.</p>
-    </footer>
+      <!-- Right side: Install Form -->
+      <div class="p-10 md:w-1/2 flex flex-col justify-center bg-white">
+        <h2 class="text-xl font-semibold text-gray-800 mb-2">Install App</h2>
+        <p class="text-gray-500 mb-6 text-sm">Enter your Shopify store URL to get started.</p>
+        
+        <form id="install-form" class="space-y-4">
+          <div>
+            <label for="shop-url" class="block text-sm font-medium text-gray-700 mb-1">Store URL</label>
+            <input 
+              type="text" 
+              id="shop-url" 
+              name="shop" 
+              required 
+              placeholder="e.g. my-store.myshopify.com" 
+              class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            >
+            <p id="error-msg" class="text-red-500 text-sm mt-2 hidden">Please enter a valid .myshopify.com URL</p>
+          </div>
+          
+          <button 
+            type="submit" 
+            class="w-full bg-black hover:bg-gray-800 text-white font-medium rounded-lg px-4 py-3 transition-colors"
+          >
+            Install on Shopify
+          </button>
+        </form>
+      </div>
+
+    </div>
 
     <!-- Installation Logic -->
     <script>
@@ -130,16 +62,12 @@
         const errorMsg = document.getElementById('error-msg');
         let shopUrl = input.value.trim().toLowerCase();
 
-        // Basic formatting/validation
         if (!shopUrl) return;
 
-        // Remove protocols if user pasted full url
         shopUrl = shopUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
-        // Ensure it has .myshopify.com
         if (!shopUrl.endsWith('.myshopify.com')) {
           if (shopUrl.includes('.')) {
-            // It's a custom domain, but Shopify OAuth requires .myshopify.com domain
             errorMsg.textContent = 'Please use your .myshopify.com domain, not your custom domain.';
             errorMsg.classList.remove('hidden');
             return;
@@ -148,8 +76,6 @@
         }
 
         errorMsg.classList.add('hidden');
-        
-        // Redirect to Express OAuth initiation route
         window.location.href = `/api/auth?shop=${encodeURIComponent(shopUrl)}`;
       });
     </script>
