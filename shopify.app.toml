@@ -16,6 +16,7 @@ redirect_urls = [
 [webhooks]
 api_version = "2026-07"
 
+  # ---- Lifecycle webhooks ----
   [[webhooks.subscriptions]]
   topics = ["app/uninstalled"]
   uri = "/api/webhooks/app-uninstalled"
@@ -27,6 +28,20 @@ api_version = "2026-07"
   [[webhooks.subscriptions]]
   topics = ["shop/update"]
   uri = "/api/webhooks/shop-update"
+
+  # ---- MANDATORY GDPR / Privacy compliance webhooks ----
+  # Required for Shopify App Store submission and public distribution
+  [[webhooks.subscriptions]]
+  topics = ["customers/data_request"]
+  uri = "/api/webhooks/customers-data-request"
+
+  [[webhooks.subscriptions]]
+  topics = ["customers/redact"]
+  uri = "/api/webhooks/customers-redact"
+
+  [[webhooks.subscriptions]]
+  topics = ["shop/redact"]
+  uri = "/api/webhooks/shop-redact"
 
 [build]
 automatically_update_urls_on_dev = true

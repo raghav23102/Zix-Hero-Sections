@@ -128,31 +128,37 @@ webhooksRouter.post("/shop-update", async (req, res) => {
 // ============================================================
 // SHOPIFY MANDATORY COMPLIANCE WEBHOOKS (GDPR / PRIVACY)
 // Required for Shopify App Store Submission
+// All use HMAC verification
 // ============================================================
 
 // POST /api/webhooks/customers-data-request
-webhooksRouter.post("/customers-data-request", async (req, res) => {
-  console.log("[Webhook GDPR] Customers data request received:", req.body);
-  // Zix Hero Sections does not store individual customer personal data
+webhooksRouter.post("/customers-data-request", verifyShopifyWebhook, async (req, res) => {
+  const shopDomain = req.headers["x-shopify-shop-domain"] as string;
+  console.log("[Webhook GDPR] Customers data request received for:", shopDomain, req.body);
+  // Zix Hero Sections does not store individual customer personal data.
+  // Hero section configurations are scoped to the store (shop), not individual customers.
   res.status(200).send("OK");
 });
 
 // POST /api/webhooks/customers-redact
-webhooksRouter.post("/customers-redact", async (req, res) => {
-  console.log("[Webhook GDPR] Customers redact received:", req.body);
-  // Zix Hero Sections does not store individual customer personal data
+webhooksRouter.post("/customers-redact", verifyShopifyWebhook, async (req, res) => {
+  const shopDomain = req.headers["x-shopify-shop-domain"] as string;
+  console.log("[Webhook GDPR] Customers redact received for:", shopDomain, req.body);
+  // Zix Hero Sections does not store individual customer personal data.
   res.status(200).send("OK");
 });
 
 // POST /api/webhooks/shop-redact
-webhooksRouter.post("/shop-redact", async (req, res) => {
-  const shopDomain = (req.body as { shop_domain?: string })?.shop_domain;
+webhooksRouter.post("/shop-redact", verifyShopifyWebhook, async (req, res) => {
+  const shopDomain = (req.body as { shop_domain?: string })?.shop_domain ?? 
+    req.headers["x-shopify-shop-domain"] as string;
   console.log("[Webhook GDPR] Shop redact received for:", shopDomain);
 
   if (shopDomain) {
     try {
       const { uninstallShop } = await import("../services/shopService.js");
       await uninstallShop(shopDomain);
+      console.log("[Webhook GDPR] Shop data erased for:", shopDomain);
     } catch (err) {
       console.error("[Webhook GDPR] Shop redact error:", err);
     }
@@ -160,3 +166,4 @@ webhooksRouter.post("/shop-redact", async (req, res) => {
 
   res.status(200).send("OK");
 });
+

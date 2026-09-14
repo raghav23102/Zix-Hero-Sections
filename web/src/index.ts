@@ -79,8 +79,20 @@ app.use((req, res, next) => {
 
 app.use(morgan("combined"));
 app.use(cookieParser());
+
+// Raw body capture for webhook HMAC verification — must come before express.json()
+app.use("/api/webhooks", (req, _res, next) => {
+  const chunks: Buffer[] = [];
+  req.on("data", (chunk: Buffer) => chunks.push(chunk));
+  req.on("end", () => {
+    req.body = Buffer.concat(chunks);
+    next();
+  });
+});
+
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
+
 
 // ---- CORS: only for API routes during dev ----
 if (process.env["NODE_ENV"] === "development") {
