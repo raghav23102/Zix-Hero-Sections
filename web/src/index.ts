@@ -38,12 +38,13 @@ const shopify = shopifyApp({
     apiSecretKey: process.env["SHOPIFY_API_SECRET"] ?? "",
     scopes: ["write_themes", "read_themes", "read_products", "write_products"],
     hostName: SHOPIFY_APP_URL.replace(/https?:\/\//, "").replace(/\/$/, ""),
-    apiVersion: "2026-07" as any,
+    apiVersion: LATEST_API_VERSION,
     isEmbeddedApp: true,
   },
   auth: {
     path: "/api/auth",
     callbackPath: "/api/auth/callback",
+    useOnlineTokens: true,
   },
   webhooks: {
     path: "/api/webhooks",
@@ -132,14 +133,6 @@ app.get(
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[Auth Callback] Shopify OAuth error:", msg);
-      
-      if (msg.includes("403") || msg.includes("Forbidden")) {
-        console.warn("OAuth returned 403 Forbidden (likely webhook registration scope error). Proceeding anyway.");
-        const shop = req.query["shop"] as string;
-        const host = req.query["host"] as string;
-        return res.redirect(`/?shop=${shop}&host=${host}`);
-      }
-
       // Show a user-friendly error page instead of blank 500
       res.status(400).send(
         `<html><body style="font-family:sans-serif;padding:40px;">
