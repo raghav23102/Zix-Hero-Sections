@@ -2,10 +2,15 @@
   "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": "public",
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "web/dist/client/index.html"
+    }
+  },
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": "/api/index.js"
     }
   ]
 }
