@@ -19,26 +19,40 @@ import { Templates } from "./pages/Templates";
 import { Billing } from "./pages/Billing";
 import { Settings } from "./pages/Settings";
 
+import { Provider as AppBridgeProvider } from "@shopify/app-bridge-react";
+import createApp from "@shopify/app-bridge";
+
+const urlParams = new URLSearchParams(window.location.search);
+export const appBridgeConfig = {
+  host: urlParams.get("host") || "",
+  apiKey: process.env.SHOPIFY_API_KEY || "",
+  forceRedirect: true
+};
+
+export const shopifyAppInstance = createApp(appBridgeConfig);
+
 export default function App() {
   return (
     <PolarisProvider i18n={enTranslations}>
-      <AppProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<AppLayout />}>
-              <Route index element={<Navigate to="/dashboard" replace />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="sections" element={<AllSections />} />
-              <Route path="sections/my" element={<MySections />} />
-              <Route path="sections/create" element={<CreateSection />} />
-              <Route path="sections/edit/:id" element={<EditorPage />} />
-              <Route path="templates" element={<Templates />} />
-              <Route path="billing" element={<Billing />} />
-              <Route path="settings" element={<Settings />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
-      </AppProvider>
+      <AppBridgeProvider config={appBridgeConfig}>
+        <AppProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<AppLayout />}>
+                <Route index element={<Navigate to="/dashboard" replace />} />
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="sections" element={<AllSections />} />
+                <Route path="sections/my" element={<MySections />} />
+                <Route path="sections/create" element={<CreateSection />} />
+                <Route path="sections/edit/:id" element={<EditorPage />} />
+                <Route path="templates" element={<Templates />} />
+                <Route path="billing" element={<Billing />} />
+                <Route path="settings" element={<Settings />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+        </AppProvider>
+      </AppBridgeProvider>
     </PolarisProvider>
   );
 }

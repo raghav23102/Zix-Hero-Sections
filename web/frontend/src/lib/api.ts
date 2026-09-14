@@ -8,18 +8,28 @@ import type {
   TemplateDefinition,
 } from "@shared/types";
 
+import { getSessionToken } from "@shopify/app-bridge-utils";
+import { shopifyAppInstance } from "../App";
+
 const BASE_URL = "/api";
 
 async function request<T>(
   path: string,
   options?: RequestInit
 ): Promise<T> {
+  let token = "";
+  try {
+    token = await getSessionToken(shopifyAppInstance);
+  } catch (e) {
+    console.warn("Could not retrieve session token", e);
+  }
+
   const response = await fetch(`${BASE_URL}${path}`, {
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
-    credentials: "include",
     ...options,
   });
 
