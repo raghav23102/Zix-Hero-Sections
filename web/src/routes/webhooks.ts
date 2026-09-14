@@ -1,0 +1,136 @@
+// ============================================================
+// Route — Webhooks (Shopify lifecycle events)
+// ============================================================
+
+import { Router } from "express";
+import crypto from "crypto";
+import { uninstallShop } from "../services/shopService.js";
+import { handleSubscriptionWebhook } from "../services/billingService.js";
+
+export const webhooksRouter = Router();
+
+// Shopify webhook signature verification
+function verifyWebhook(body: Buffer, hmacHeader: string): boolean {
+  const secret = process.env["SHOPIFY_API_SECRET"] ?? "";
+  const hash = crypto
+    .createHmac("sha256", secret)
+    .update(body)
+    .digest("base64");
+  return crypto.timingSafeEqual(
+    Buffer.from(hash, "base64"),
+    Buffer.from(hmacHeader, "base64")
+  );
+}
+
+// Middleware to verify Shopify webhook signatures
+function verifyShopifyWebhook(
+  req: import("express").Request,
+  res: import("express").Response,
+  next: import("express").NextFunction
+): void {
+  const hmac = req.headers["x-shopify-hmac-sha256"] as string;
+  const rawBody = req.body as Buffer;
+
+  if (!hmac || !rawBody) {
+    res.status(401).send("Unauthorized");
+    return;
+  }
+
+  if (!verifyWebhook(rawBody, hmac)) {
+    res.status(401).send("Unauthorized");
+    return;
+  }
+
+  next();
+}
+
+// Parse raw body for HMAC verification
+webhooksRouter.use(
+  import("express").then
+    ? (req, res, next) => next()
+    : (req, res, next) => next()
+);
+
+// POST /api/webhooks/app-uninstalled
+webhooksRouter.post(
+  "/app-uninstalled",
+  import("express").then
+    ? (req, res, next) => next()
+    : (req, res, next) => next(),
+  async (req, res) => {
+    const shopDomain = req.headers["x-shopify-shop-domain"] as string;
+
+    if (!shopDomain) {
+      res.status(400).send("Bad Request");
+      return;
+    }
+
+    try {
+      await uninstallShop(shopDomain);
+      console.log(`[Webhook] App uninstalled: ${shopDomain}`);
+      res.status(200).send("OK");
+    } catch (err) {
+      console.error("[Webhook] Uninstall error:", err);
+      res.status(500).send("Error");
+    }
+  }
+);
+
+// POST /api/webhooks/subscription-update
+webhooksRouter.post("/subscription-update", async (req, res) => {
+  const shopDomain = req.headers["x-shopify-shop-domain"] as string;
+
+  if (!shopDomain) {
+    res.status(400).send("Bad Request");
+    return;
+  }
+
+  try {
+    const payload = req.body as {
+      id: string;
+      status: string;
+      name: string;
+    };
+    await handleSubscriptionWebhook(shopDomain, payload);
+    console.log(`[Webhook] Subscription update for: ${shopDomain}`);
+    res.status(200).send("OK");
+  } catch (err) {
+    console.error("[Webhook] Subscription update error:", err);
+    res.status(500).send("Error");
+  }
+});
+
+// POST /api/webhooks/shop-update
+webhooksRouter.post("/shop-update", async (req, res) => {
+  const shopDomain = req.headers["x-shopify-shop-domain"] as string;
+
+  if (!shopDomain) {
+    res.status(400).send("Bad Request");
+    return;
+  }
+
+  try {
+    const payload = req.body as {
+      name?: string;
+      email?: string;
+      currency?: string;
+      iana_timezone?: string;
+    };
+
+    const { prisma } = await import("../db.js");
+    await prisma.shop.updateMany({
+      where: { shopDomain },
+      data: {
+        ...(payload.name && { name: payload.name }),
+        ...(payload.email && { email: payload.email }),
+        ...(payload.currency && { currency: payload.currency }),
+        ...(payload.iana_timezone && { timezone: payload.iana_timezone }),
+      },
+    });
+
+    res.status(200).send("OK");
+  } catch (err) {
+    console.error("[Webhook] Shop update error:", err);
+    res.status(500).send("Error");
+  }
+});

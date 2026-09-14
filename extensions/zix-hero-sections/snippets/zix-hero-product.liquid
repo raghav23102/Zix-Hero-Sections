@@ -1,0 +1,8 @@
+{% comment %}
+  Snippet: zix-hero-product
+  Renders product-specific content for the product-showcase template.
+{% endcomment %}
+
+{% if block.settings.product_price != blank %}
+  <p class="zix-hero__product-price">{{ block.settings.product_price }}</p>
+{% endif %}

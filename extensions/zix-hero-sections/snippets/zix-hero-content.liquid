@@ -1,0 +1,41 @@
+{% comment %}
+  Snippet: zix-hero-content
+  Renders the main text content (heading, description, buttons) for any template.
+{% endcomment %}
+
+{% if block.settings.badge_text != blank %}
+  <div class="zix-hero__badge">{{ block.settings.badge_text }}</div>
+{% endif %}
+
+{% if block.settings.subheading != blank %}
+  <p class="zix-hero__subheading">{{ block.settings.subheading | escape }}</p>
+{% endif %}
+
+{% if block.settings.heading != blank %}
+  <h2 class="zix-hero__heading">{{ block.settings.heading }}</h2>
+{% endif %}
+
+{% if block.settings.description != blank %}
+  <p class="zix-hero__description">{{ block.settings.description }}</p>
+{% endif %}
+
+<div class="zix-hero__buttons">
+  {% if block.settings.primary_button_text != blank %}
+    <a
+      href="{{ block.settings.primary_button_url | default: '#' }}"
+      class="zix-btn zix-btn--primary"
+      {% if block.settings.primary_button_url == blank %}aria-disabled="true"{% endif %}
+    >
+      {{ block.settings.primary_button_text | escape }}
+    </a>
+  {% endif %}
+  {% if block.settings.secondary_button_text != blank %}
+    <a
+      href="{{ block.settings.secondary_button_url | default: '#' }}"
+      class="zix-btn zix-btn--secondary"
+      {% if block.settings.secondary_button_url == blank %}aria-disabled="true"{% endif %}
+    >
+      {{ block.settings.secondary_button_text | escape }}
+    </a>
+  {% endif %}
+</div>

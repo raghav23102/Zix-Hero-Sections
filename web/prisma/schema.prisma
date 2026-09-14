@@ -1,0 +1,170 @@
+// Zix Hero Sections — Prisma Schema
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// SHOPIFY SESSION (required by @shopify/shopify-app-session-storage-prisma)
+// ============================================================
+model Session {
+  id          String    @id
+  shop        String
+  state       String
+  isOnline    Boolean   @default(false)
+  scope       String?
+  expires     DateTime?
+  accessToken String    @default("")
+  userId      BigInt?
+  firstName   String?
+  lastName    String?
+  email       String?
+  accountOwner Boolean  @default(false)
+  locale      String?
+  collaborator Boolean?  @default(false)
+  emailVerified Boolean? @default(false)
+
+  @@map("sessions")
+}
+
+// ============================================================
+// SHOP
+// ============================================================
+model Shop {
+  id          String   @id @default(uuid())
+  shopDomain  String   @unique
+  accessToken String
+  email       String?
+  name        String?
+  currency    String?
+  timezone    String?
+  installedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  isActive    Boolean  @default(true)
+
+  // Relations
+  heroSections HeroSection[]
+  subscription Subscription?
+  usage        Usage?
+  settings     ShopSettings?
+
+  @@map("shops")
+}
+
+// ============================================================
+// PLAN ENUM
+// ============================================================
+enum Plan {
+  FREE
+  BASIC
+  PRO
+  ULTIMATE
+}
+
+// ============================================================
+// HERO SECTION STATUS
+// ============================================================
+enum SectionStatus {
+  ACTIVE
+  INACTIVE
+  LOCKED // When merchant downgrades and section count exceeds limit
+}
+
+// ============================================================
+// HERO SECTION
+// ============================================================
+model HeroSection {
+  id            String        @id @default(uuid())
+  shopId        String
+  templateId    String        // e.g. "modern-split", "fullscreen-image"
+  name          String
+  configuration Json          // Flexible JSON config - stores all template settings
+  status        SectionStatus @default(ACTIVE)
+  isPublished   Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId])
+  @@index([shopId, status])
+  @@map("hero_sections")
+}
+
+// ============================================================
+// SUBSCRIPTION
+// ============================================================
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+  PENDING
+  FROZEN
+  DECLINED
+}
+
+model Subscription {
+  id                     String             @id @default(uuid())
+  shopId                 String             @unique
+  plan                   Plan               @default(FREE)
+  status                 SubscriptionStatus @default(ACTIVE)
+  shopifySubscriptionId  String?            // Shopify's recurring charge ID
+  shopifyConfirmationUrl String?            // URL for merchant to confirm billing
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  trialEndsAt            DateTime?
+  cancelledAt            DateTime?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  // Relations
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+// ============================================================
+// USAGE TRACKING
+// ============================================================
+model Usage {
+  id             String   @id @default(uuid())
+  shopId         String   @unique
+  activeSections Int      @default(0)
+  totalCreated   Int      @default(0)
+  lastActivityAt DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@map("usage")
+}
+
+// ============================================================
+// SHOP SETTINGS
+// ============================================================
+model ShopSettings {
+  id                     String   @id @default(uuid())
+  shopId                 String   @unique
+  defaultHeadingFont     String   @default("system-ui")
+  defaultButtonColor     String   @default("#000000")
+  defaultButtonTextColor String   @default("#ffffff")
+  defaultSectionHeight   String   @default("600px")
+  enableAnimations       Boolean  @default(true)
+  notifyOnPublish        Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  // Relations
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@map("shop_settings")
+}
