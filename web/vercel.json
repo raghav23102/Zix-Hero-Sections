@@ -2,14 +2,14 @@
   "version": 2,
   "outputDirectory": "dist/client",
   "functions": {
-    "api/index.js": {
+    "api/index.ts": {
       "includeFiles": "dist/**/*.html"
     }
   },
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/api/index.js"
+      "destination": "/api/index.ts"
     }
   ]
 }
