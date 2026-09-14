@@ -68,7 +68,7 @@ export async function createShopifySubscription(
   const variables = {
     name: PLAN_NAMES[plan],
     returnUrl,
-    test: process.env["NODE_ENV"] !== "production",
+    test: true, // Always true for now until app is published
     lineItems: [
       {
         plan: {

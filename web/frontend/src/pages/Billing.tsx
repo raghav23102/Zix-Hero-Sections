@@ -167,7 +167,7 @@ export function Billing() {
 
         {/* Pricing Cards */}
         <Layout.Section>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "20px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "20px" }}>
             {plans.map((plan) => {
               const style = PLAN_STYLES[plan.id] ?? PLAN_STYLES["FREE"];
               const isCurrentPlan = plan.id === currentPlan;

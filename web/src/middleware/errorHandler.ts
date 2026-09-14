@@ -13,7 +13,7 @@ export function errorHandler(
   console.error("[Error]", err.message, err.stack);
 
   // Shopify auth errors
-  if (err.message?.includes("Shopify") || err.message?.includes("session") || err.message?.includes("HMAC")) {
+  if (err.message?.includes("session") || err.message?.includes("HMAC")) {
     res.status(401).json({
       success: false,
       error: "Your Shopify session has expired. Please reinstall the app.",
