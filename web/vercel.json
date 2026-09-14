@@ -1,10 +1,9 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "outputDirectory": "public",
+  "outputDirectory": "dist/client",
   "functions": {
     "api/index.js": {
-      "includeFiles": "web/dist/client/index.html"
+      "includeFiles": "dist/server/index.html"
     }
   },
   "rewrites": [

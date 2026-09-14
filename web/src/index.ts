@@ -123,10 +123,11 @@ app.use("/api/shop", shopify.validateAuthenticatedSession(), shopRouter);
 
 // ---- Serve React App in Production ----
 const clientDistPath = path.resolve(__dirname, "../../client");
+const htmlPath = path.resolve(__dirname, "index.html");
 if (process.env["NODE_ENV"] === "production") {
   app.use(express.static(clientDistPath, { maxAge: "1y" }));
   app.get("*", shopify.ensureInstalledOnShop(), (_req, res) => {
-    res.sendFile(path.join(clientDistPath, "index.html"));
+    res.sendFile(htmlPath);
   });
 } else {
   // In dev, serve a redirect to the Vite dev server
