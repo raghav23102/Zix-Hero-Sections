@@ -38,7 +38,7 @@ const shopify = shopifyApp({
     apiSecretKey: process.env["SHOPIFY_API_SECRET"] ?? "",
     scopes: ["write_themes", "read_themes", "read_products", "write_products"],
     hostName: SHOPIFY_APP_URL.replace(/https?:\/\//, "").replace(/\/$/, ""),
-    apiVersion: LATEST_API_VERSION,
+    apiVersion: "2026-07" as any,
     isEmbeddedApp: true,
   },
   auth: {
