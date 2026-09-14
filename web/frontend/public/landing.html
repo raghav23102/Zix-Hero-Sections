@@ -3,58 +3,129 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Install Zix Hero Sections</title>
+    <title>Zix Hero Sections</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <style>
-      body { font-family: 'Inter', sans-serif; background-color: #f8f9fa; }
+      body { 
+        font-family: 'Inter', sans-serif; 
+        background-color: #0f172a;
+        margin: 0;
+        overflow: hidden;
+      }
+      
+      /* Crazy Animated Gradient Background */
+      .mesh-bg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                    radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
+                    radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
+        z-index: -2;
+      }
+      
+      .mesh-blob {
+        position: absolute;
+        width: 600px;
+        height: 600px;
+        background: linear-gradient(180deg, rgba(139, 92, 246, 0.4) 0%, rgba(59, 130, 246, 0.4) 100%);
+        filter: blur(100px);
+        border-radius: 50%;
+        animation: float 20s ease-in-out infinite alternate;
+        z-index: -1;
+      }
+
+      @keyframes float {
+        0% { transform: translate(-10%, -10%) scale(1); }
+        50% { transform: translate(40%, 20%) scale(1.2); }
+        100% { transform: translate(-20%, 40%) scale(0.9); }
+      }
+
+      /* Premium Glassmorphism Card */
+      .glass {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      }
+      
+      .logo-img {
+        /* Drop shadow to make logo pop on dark background */
+        filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.2));
+      }
     </style>
   </head>
-  <body class="min-h-screen flex items-center justify-center p-4">
+  <body class="min-h-screen flex items-center justify-center p-4 text-white">
     
-    <!-- Simple Banner -->
-    <div class="w-full max-w-4xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row">
+    <!-- Animated Background Elements -->
+    <div class="mesh-bg"></div>
+    <div class="mesh-blob" style="top: 10%; left: 20%;"></div>
+    <div class="mesh-blob" style="bottom: 10%; right: 10%; background: linear-gradient(180deg, rgba(236, 72, 153, 0.3) 0%, rgba(139, 92, 246, 0.3) 100%); animation-delay: -10s;"></div>
+
+    <!-- Main Container -->
+    <div class="glass w-full max-w-5xl rounded-3xl overflow-hidden flex flex-col lg:flex-row relative z-10">
       
-      <!-- Left side: Information -->
-      <div class="bg-blue-600 text-white p-10 md:w-1/2 flex flex-col justify-center">
-        <h1 class="text-3xl font-bold mb-4">Zix Hero Sections</h1>
-        <p class="text-blue-100 text-lg">
-          Add beautiful, high-converting hero banners to your Shopify store in seconds. No coding required.
+      <!-- Left side: Brand -->
+      <div class="lg:w-3/5 p-12 lg:p-16 flex flex-col justify-center relative">
+        <img src="/logo.png" alt="Zix Hero Sections" class="w-48 mb-8 logo-img">
+        <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight mb-6 leading-tight">
+          Next-Gen <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Hero Sections</span>
+        </h1>
+        <p class="text-slate-300 text-lg md:text-xl max-w-lg leading-relaxed">
+          Transform your Shopify storefront with breathtaking, high-converting banner designs. Zero coding required.
         </p>
+        
+        <div class="mt-12 flex gap-4 text-sm font-medium text-slate-400">
+          <div class="flex items-center gap-2"><svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Instant Install</div>
+          <div class="flex items-center gap-2"><svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> Blazing Fast</div>
+        </div>
       </div>
 
-      <!-- Right side: Install Form -->
-      <div class="p-10 md:w-1/2 flex flex-col justify-center bg-white">
-        <h2 class="text-xl font-semibold text-gray-800 mb-2">Install App</h2>
-        <p class="text-gray-500 mb-6 text-sm">Enter your Shopify store URL to get started.</p>
-        
-        <form id="install-form" class="space-y-4">
-          <div>
-            <label for="shop-url" class="block text-sm font-medium text-gray-700 mb-1">Store URL</label>
-            <input 
-              type="text" 
-              id="shop-url" 
-              name="shop" 
-              required 
-              placeholder="e.g. my-store.myshopify.com" 
-              class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            >
-            <p id="error-msg" class="text-red-500 text-sm mt-2 hidden">Please enter a valid .myshopify.com URL</p>
-          </div>
+      <!-- Right side: Form -->
+      <div class="lg:w-2/5 p-12 lg:p-16 flex flex-col justify-center bg-white/5 border-t lg:border-t-0 lg:border-l border-white/10 relative">
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-600/10 opacity-50"></div>
+        <div class="relative z-10">
+          <h2 class="text-2xl font-bold mb-2">Get Started Now</h2>
+          <p class="text-slate-400 mb-8 text-sm">Enter your Shopify store URL to connect instantly.</p>
           
-          <button 
-            type="submit" 
-            class="w-full bg-black hover:bg-gray-800 text-white font-medium rounded-lg px-4 py-3 transition-colors"
-          >
-            Install on Shopify
-          </button>
-        </form>
+          <form id="install-form" class="space-y-4">
+            <div class="relative group">
+              <div class="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl blur opacity-30 group-focus-within:opacity-100 transition duration-500"></div>
+              <input 
+                type="text" 
+                id="shop-url" 
+                name="shop" 
+                required 
+                placeholder="your-store.myshopify.com" 
+                class="relative w-full bg-slate-900 border border-slate-700 rounded-xl px-5 py-4 text-white placeholder-slate-500 focus:outline-none transition-all"
+              >
+            </div>
+            <p id="error-msg" class="text-red-400 text-sm hidden">Please enter a valid .myshopify.com URL</p>
+            
+            <button 
+              type="submit" 
+              class="relative w-full overflow-hidden rounded-xl group"
+            >
+              <div class="absolute inset-0 w-full h-full bg-gradient-to-r from-blue-600 to-purple-600"></div>
+              <div class="absolute bottom-0 right-0 block w-64 h-64 mb-32 mr-4 transition duration-500 origin-bottom-left transform rotate-45 translate-x-24 bg-pink-500 opacity-30 group-hover:rotate-90 ease"></div>
+              <span class="relative block px-5 py-4 font-semibold text-white">
+                Install to Shopify
+              </span>
+            </button>
+          </form>
+          <p class="text-xs text-slate-500 mt-6 text-center">
+            By continuing, you agree to our Terms of Service.
+          </p>
+        </div>
       </div>
 
     </div>
 
-    <!-- Installation Logic -->
     <script>
       document.getElementById('install-form').addEventListener('submit', function(e) {
         e.preventDefault();
