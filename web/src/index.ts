@@ -53,10 +53,29 @@ const shopify = shopifyApp({
 
 const app = express();
 
+const logs: string[] = [];
+const originalError = console.error;
+const originalWarn = console.warn;
+console.error = (...args: any[]) => {
+  logs.push("ERROR: " + args.map(a => String(a)).join(" "));
+  if (logs.length > 50) logs.shift();
+  originalError.apply(console, args);
+};
+console.warn = (...args: any[]) => {
+  logs.push("WARN: " + args.map(a => String(a)).join(" "));
+  if (logs.length > 50) logs.shift();
+  originalWarn.apply(console, args);
+};
+
 // Trust Vercel's proxy so Secure cookies are set correctly
 app.set("trust proxy", 1);
 
-
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api/auth")) {
+    logs.push(`${new Date().toISOString()} ${req.method} ${req.url}`);
+  }
+  next();
+});
 
 app.use(morgan("combined"));
 app.use(cookieParser());
@@ -82,7 +101,8 @@ app.get("/api/diagnostic", async (req, res) => {
       scopes: process.env.SCOPES || "MISSING",
       dbStatus: typeof dbTest === "number" ? "Connected! Sessions count: " + dbTest : "DB Error: " + dbTest,
       cookies: req.cookies,
-      appUrl: process.env.SHOPIFY_APP_URL || "MISSING"
+      appUrl: process.env.SHOPIFY_APP_URL || "MISSING",
+      capturedLogs: logs
     });
   } catch (err) {
     res.json({ error: String(err) });
