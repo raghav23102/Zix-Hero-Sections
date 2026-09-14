@@ -29,8 +29,11 @@ export function errorHandler(
         try {
           const token = req.headers.authorization.split("Bearer ")[1];
           if (token) {
-            const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64").toString());
-            shop = payload.dest.replace("https://", "");
+            const tokenParts = token.split(".");
+            if (tokenParts.length > 1 && tokenParts[1]) {
+              const payload = JSON.parse(Buffer.from(tokenParts[1], "base64").toString());
+              shop = payload.dest.replace("https://", "");
+            }
           }
         } catch (e) {
           // Ignore parse errors
