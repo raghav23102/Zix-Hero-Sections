@@ -80,19 +80,12 @@ app.use((req, res, next) => {
 app.use(morgan("combined"));
 app.use(cookieParser());
 
-// Raw body capture for webhook HMAC verification — must come before express.json()
-app.use("/api/webhooks", (req, _res, next) => {
-  const chunks: Buffer[] = [];
-  req.on("data", (chunk: Buffer) => chunks.push(chunk));
-  req.on("end", () => {
-    req.body = Buffer.concat(chunks);
-    next();
-  });
-});
+// Webhooks need raw body for HMAC signature verification
+// Only apply to POST requests to avoid affecting auth GET callbacks
+app.post("/api/webhooks/*", express.raw({ type: "*/*", limit: "1mb" }));
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
-
 
 // ---- CORS: only for API routes during dev ----
 if (process.env["NODE_ENV"] === "development") {
@@ -125,7 +118,37 @@ app.get("/api/diagnostic", async (req, res) => {
 app.get(shopify.config.auth.path, shopify.auth.begin());
 app.get(
   shopify.config.auth.callbackPath,
-  shopify.auth.callback(),
+  async (req, res, next) => {
+    // Wrap Shopify's auth.callback() with detailed error logging
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const handler = shopify.auth.callback();
+        handler(req, res, (err?: unknown) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+      next();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[Auth Callback] Shopify OAuth error:", msg);
+      // Show a user-friendly error page instead of blank 500
+      res.status(500).send(
+        `<html><body style="font-family:sans-serif;padding:40px;">
+          <h2>Authentication Error</h2>
+          <p><strong>${msg}</strong></p>
+          <p>Please check that your <code>SHOPIFY_API_SECRET</code> in Vercel matches the one in Shopify Partners.</p>
+          <p>Common fixes:</p>
+          <ul>
+            <li>Verify SHOPIFY_API_SECRET in Vercel Environment Variables</li>
+            <li>Make sure the redirect URL <code>https://zixherosections.vercel.app/api/auth/callback</code> is listed in your app's Partner Dashboard</li>
+            <li>Clear your browser cookies and try reinstalling</li>
+          </ul>
+          <a href="/api/auth?shop=${(req.query['shop'] as string) || ''}">Try Again</a>
+        </body></html>`
+      );
+    }
+  },
   async (req, res, next) => {
     // After OAuth completes, set up the shop in our DB
     try {
@@ -133,6 +156,7 @@ app.get(
       if (session) {
         const { setupShop } = await import("./services/shopService.js");
         await setupShop(session);
+        console.log("[Auth Callback] Shop setup complete:", session.shop);
       }
     } catch (err) {
       console.error("[Auth Callback] Shop setup error:", err);
