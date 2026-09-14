@@ -116,7 +116,26 @@ app.get("/api/diagnostic", async (req, res) => {
 });
 
 // ---- Shopify auth middleware ----
-app.get(shopify.config.auth.path, shopify.auth.begin());
+app.get(shopify.config.auth.path, async (req, res, next) => {
+  try {
+    const shop = req.query["shop"];
+    if (!shop) {
+      return res.status(400).send("No shop provided");
+    }
+    
+    // Force online token request to bypass Shopify's block on non-expiring offline tokens
+    await shopify.api.auth.begin({
+      shop: shopify.api.utils.sanitizeShop(shop as string)!,
+      callbackPath: shopify.config.auth.callbackPath,
+      isOnline: true,
+      rawRequest: req,
+      rawResponse: res,
+    });
+  } catch (err) {
+    console.error("[Auth Begin] Error:", err);
+    next(err);
+  }
+});
 app.get(
   shopify.config.auth.callbackPath,
   async (req, res, next) => {
@@ -155,6 +174,13 @@ app.get(
     try {
       const session = res.locals["shopify"]?.session;
       if (session) {
+        try {
+          const responses = await shopify.api.webhooks.register({ session });
+          console.log("[Auth Callback] Webhooks registered:", Object.keys(responses));
+        } catch (webhookErr) {
+          console.error("[Auth Callback] Webhook registration failed:", webhookErr);
+        }
+
         const { setupShop } = await import("./services/shopService.js");
         await setupShop(session);
         console.log("[Auth Callback] Shop setup complete:", session.shop);
