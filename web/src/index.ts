@@ -137,14 +137,6 @@ app.post(
 );
 app.use("/api/webhooks", webhooksRouter);
 
-// ---- API Routes (require Shopify session) ----
-app.use("/api", shopify.validateAuthenticatedSession(), authRouter);
-app.use("/api/sections", shopify.validateAuthenticatedSession(), sectionsRouter);
-app.use("/api/templates", shopify.validateAuthenticatedSession(), templatesRouter);
-app.use("/api/billing", shopify.validateAuthenticatedSession(), billingRouter);
-app.use("/api/settings", shopify.validateAuthenticatedSession(), settingsRouter);
-app.use("/api/shop", shopify.validateAuthenticatedSession(), shopRouter);
-
 // ---- App Config Route for Frontend ----
 app.get("/api/config", (req, res) => {
   const SHOPIFY_APP_URL = process.env["SHOPIFY_APP_URL"] ?? "";
@@ -154,7 +146,15 @@ app.get("/api/config", (req, res) => {
   });
 });
 
-// For Vercel Serverless, we do NOT serve static files via Express.
+// ---- API Routes (require Shopify session) ----
+app.use("/api", shopify.validateAuthenticatedSession(), authRouter);
+app.use("/api/sections", shopify.validateAuthenticatedSession(), sectionsRouter);
+app.use("/api/templates", shopify.validateAuthenticatedSession(), templatesRouter);
+app.use("/api/billing", shopify.validateAuthenticatedSession(), billingRouter);
+app.use("/api/settings", shopify.validateAuthenticatedSession(), settingsRouter);
+app.use("/api/shop", shopify.validateAuthenticatedSession(), shopRouter);
+
+// ---- API Routes (require Shopify session) ----
 // Vercel's Edge Network serves them via vercel.json routing.
 if (process.env["NODE_ENV"] !== "production") {
   // In dev, serve a redirect to the Vite dev server
