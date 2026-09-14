@@ -52,6 +52,9 @@ const shopify = shopifyApp({
 
 const app = express();
 
+// Trust Vercel's proxy so Secure cookies are set correctly
+app.set("trust proxy", 1);
+
 
 
 app.use(morgan("combined"));
