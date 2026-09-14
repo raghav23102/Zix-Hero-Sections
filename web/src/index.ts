@@ -138,12 +138,13 @@ if (process.env["NODE_ENV"] === "production") {
 // ---- Error Handler ----
 app.use(errorHandler);
 
-// ---- Start Server ----
-app.listen(PORT, () => {
-  console.log(`\n🚀 Zix Hero Sections server running on port ${PORT}`);
-  console.log(`   Environment: ${process.env["NODE_ENV"] ?? "development"}`);
-  console.log(`   App URL: ${SHOPIFY_APP_URL}`);
-});
+if (process.env["VERCEL"] !== "1") {
+  app.listen(PORT, () => {
+    console.log(`\n🚀 Zix Hero Sections server running on port ${PORT}`);
+    console.log(`   Environment: ${process.env["NODE_ENV"] ?? "development"}`);
+    console.log(`   App URL: ${SHOPIFY_APP_URL}`);
+  });
+}
 
 export { shopify };
 export default app;

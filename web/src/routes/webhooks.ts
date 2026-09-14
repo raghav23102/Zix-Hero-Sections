@@ -124,3 +124,39 @@ webhooksRouter.post("/shop-update", async (req, res) => {
     res.status(500).send("Error");
   }
 });
+
+// ============================================================
+// SHOPIFY MANDATORY COMPLIANCE WEBHOOKS (GDPR / PRIVACY)
+// Required for Shopify App Store Submission
+// ============================================================
+
+// POST /api/webhooks/customers-data-request
+webhooksRouter.post("/customers-data-request", async (req, res) => {
+  console.log("[Webhook GDPR] Customers data request received:", req.body);
+  // Zix Hero Sections does not store individual customer personal data
+  res.status(200).send("OK");
+});
+
+// POST /api/webhooks/customers-redact
+webhooksRouter.post("/customers-redact", async (req, res) => {
+  console.log("[Webhook GDPR] Customers redact received:", req.body);
+  // Zix Hero Sections does not store individual customer personal data
+  res.status(200).send("OK");
+});
+
+// POST /api/webhooks/shop-redact
+webhooksRouter.post("/shop-redact", async (req, res) => {
+  const shopDomain = (req.body as { shop_domain?: string })?.shop_domain;
+  console.log("[Webhook GDPR] Shop redact received for:", shopDomain);
+
+  if (shopDomain) {
+    try {
+      const { uninstallShop } = await import("../services/shopService.js");
+      await uninstallShop(shopDomain);
+    } catch (err) {
+      console.error("[Webhook GDPR] Shop redact error:", err);
+    }
+  }
+
+  res.status(200).send("OK");
+});
