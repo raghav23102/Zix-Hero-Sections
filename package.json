@@ -4,7 +4,7 @@
   "description": "Beautiful Shopify Hero Sections. No Coding Required.",
   "private": true,
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   },
   "workspaces": [
     "web"
