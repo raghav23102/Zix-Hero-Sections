@@ -139,56 +139,45 @@ app.get(shopify.config.auth.path, async (req, res, next) => {
 app.get(
   shopify.config.auth.callbackPath,
   async (req, res, next) => {
-    // Wrap Shopify's auth.callback() with detailed error logging
     try {
-      await new Promise<void>((resolve, reject) => {
-        const handler = shopify.auth.callback();
-        handler(req, res, (err?: unknown) => {
-          if (err) reject(err);
-          else resolve();
-        });
+      // 1. Manually exchange the code using the underlying API to bypass authCallback
+      const callbackResponse = await shopify.api.auth.callback({
+        rawRequest: req,
+        rawResponse: res,
       });
+
+      const session = callbackResponse.session;
+
+      // 2. Store the session manually
+      await shopify.config.sessionStorage.storeSession(session);
+      res.locals["shopify"] = { ...res.locals["shopify"], session };
+
+      // 3. Setup shop in our DB
+      const { setupShop } = await import("./services/shopService.js");
+      await setupShop(session);
+      console.log("[Auth Callback] Shop setup complete:", session.shop);
+
+      // 4. If we requested online tokens but got an offline one, kick off the online flow
+      if (shopify.config.auth.useOnlineTokens && !session.isOnline) {
+        console.log("[Auth Callback] Received offline token, redirecting to online token OAuth");
+        await shopify.api.auth.begin({
+          shop: session.shop,
+          callbackPath: shopify.config.auth.callbackPath,
+          isOnline: true,
+          rawRequest: req,
+          rawResponse: res,
+        });
+        return; // Stop execution, the response has been sent (redirected)
+      }
+
+      // 5. Proceed to redirect
       next();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[Auth Callback] Shopify OAuth error:", msg);
-      // Show a user-friendly error page instead of blank 500
-      res.status(400).send(
-        `<html><body style="font-family:sans-serif;padding:40px;">
-          <h2>Authentication Error</h2>
-          <p><strong>${msg}</strong></p>
-          <p>Please check that your <code>SHOPIFY_API_SECRET</code> in Vercel matches the one in Shopify Partners.</p>
-          <p>Common fixes:</p>
-          <ul>
-            <li>Verify SHOPIFY_API_SECRET in Vercel Environment Variables</li>
-            <li>Make sure the redirect URL <code>https://zixherosections.vercel.app/api/auth/callback</code> is listed in your app's Partner Dashboard</li>
-            <li>Clear your browser cookies and try reinstalling</li>
-          </ul>
-          <a href="/api/auth?shop=${(req.query['shop'] as string) || ''}">Try Again</a>
-        </body></html>`
-      );
+      // Even if it fails, try to redirect back to app so user isn't stuck on a blank page
+      next();
     }
-  },
-  async (req, res, next) => {
-    // After OAuth completes, set up the shop in our DB
-    try {
-      const session = res.locals["shopify"]?.session;
-      if (session) {
-        try {
-          const responses = await shopify.api.webhooks.register({ session });
-          console.log("[Auth Callback] Webhooks registered:", Object.keys(responses));
-        } catch (webhookErr) {
-          console.error("[Auth Callback] Webhook registration failed:", webhookErr);
-        }
-
-        const { setupShop } = await import("./services/shopService.js");
-        await setupShop(session);
-        console.log("[Auth Callback] Shop setup complete:", session.shop);
-      }
-    } catch (err) {
-      console.error("[Auth Callback] Shop setup error:", err);
-    }
-    next();
   },
   shopify.redirectToShopifyOrAppRoot()
 );
