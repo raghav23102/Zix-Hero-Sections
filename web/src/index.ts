@@ -145,64 +145,17 @@ app.use("/api/billing", shopify.validateAuthenticatedSession(), billingRouter);
 app.use("/api/settings", shopify.validateAuthenticatedSession(), settingsRouter);
 app.use("/api/shop", shopify.validateAuthenticatedSession(), shopRouter);
 
-// ---- Public Landing Page Interceptor ----
-app.get("/", (req, res, next) => {
-  if (req.query.shop) {
-    // App launched from Shopify Admin. Let the wildcard route handle it.
-    return next();
-  }
-  // Public visit without shop query param. Serve the landing page.
-  let landingPagePath = path.resolve(__dirname, "../client/landing.html");
-  if (!fs.existsSync(landingPagePath)) {
-    landingPagePath = path.resolve(process.cwd(), "dist/client/landing.html");
-    if (!fs.existsSync(landingPagePath)) {
-      landingPagePath = path.resolve(process.cwd(), "web/dist/client/landing.html");
-    }
-  }
-
-  if (process.env["NODE_ENV"] === "production") {
-    return res.sendFile(landingPagePath);
-  } else {
-    return res.redirect(`http://localhost:3001/landing.html`);
-  }
+// ---- App Config Route for Frontend ----
+app.get("/api/config", (req, res) => {
+  res.json({
+    apiKey: process.env.SHOPIFY_API_KEY || "",
+    hostName: shopify.config.api.hostName
+  });
 });
 
-// ---- Serve React App in Production ----
-let clientDistPath = path.resolve(__dirname, "../client");
-let htmlPath = path.resolve(__dirname, "index.html");
-
-if (process.env["NODE_ENV"] === "production") {
-  if (!fs.existsSync(clientDistPath)) {
-    clientDistPath = path.resolve(process.cwd(), "dist/client");
-    if (!fs.existsSync(clientDistPath)) {
-      clientDistPath = path.resolve(process.cwd(), "web/dist/client");
-    }
-  }
-  
-  app.use(express.static(clientDistPath, { maxAge: "1y", index: false }));
-  app.get("*", shopify.ensureInstalledOnShop(), (_req, res) => {
-    try {
-      let html = "";
-      try {
-        html = fs.readFileSync(htmlPath, "utf-8");
-      } catch (e) {
-        try {
-          html = fs.readFileSync(path.resolve(process.cwd(), "dist/client/index.html"), "utf-8");
-        } catch (e2) {
-          html = fs.readFileSync(path.resolve(process.cwd(), "web/dist/client/index.html"), "utf-8");
-        }
-      }
-      
-      html = html.replace(
-        "<head>",
-        `<head><script>window.SHOPIFY_API_KEY = "${process.env.SHOPIFY_API_KEY || ""}";</script>`
-      );
-      res.send(html);
-    } catch (err) {
-      res.sendFile(htmlPath);
-    }
-  });
-} else {
+// For Vercel Serverless, we do NOT serve static files via Express.
+// Vercel's Edge Network serves them via vercel.json routing.
+if (process.env["NODE_ENV"] !== "production") {
   // In dev, serve a redirect to the Vite dev server
   app.get("*", shopify.ensureInstalledOnShop(), (_req, res) => {
     res.redirect(`http://localhost:3001${_req.path}`);

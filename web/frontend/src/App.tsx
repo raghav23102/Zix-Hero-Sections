@@ -21,12 +21,7 @@ import { Settings } from "./pages/Settings";
 import { Provider as AppBridgeProvider, useAppBridge } from "@shopify/app-bridge-react";
 import { setAppBridgeInstance } from "./lib/api";
 
-const urlParams = new URLSearchParams(window.location.search);
-export const appBridgeConfig = {
-  host: urlParams.get("host") || "",
-  apiKey: (window as any).SHOPIFY_API_KEY || process.env.SHOPIFY_API_KEY || "",
-  forceRedirect: true
-};
+import React, { useEffect, useState } from "react";
 
 function AppBridgeInstanceCapturer({ children }: { children: React.ReactNode }) {
   const app = useAppBridge();
@@ -35,9 +30,33 @@ function AppBridgeInstanceCapturer({ children }: { children: React.ReactNode }) 
 }
 
 export default function App() {
+  const [config, setConfig] = useState<any>(null);
+
+  useEffect(() => {
+    fetch("/api/config")
+      .then(r => r.json())
+      .then(data => {
+        const urlParams = new URLSearchParams(window.location.search);
+        setConfig({
+          host: urlParams.get("host") || data.hostName || "",
+          apiKey: data.apiKey || "",
+          forceRedirect: true
+        });
+      })
+      .catch(console.error);
+  }, []);
+
+  if (!config) {
+    return (
+      <PolarisProvider i18n={enTranslations}>
+        <div style={{ padding: "50px", textAlign: "center" }}>Loading App...</div>
+      </PolarisProvider>
+    );
+  }
+
   return (
     <PolarisProvider i18n={enTranslations}>
-      <AppBridgeProvider config={appBridgeConfig}>
+      <AppBridgeProvider config={config}>
         <AppBridgeInstanceCapturer>
           <AppProvider>
             <BrowserRouter>
