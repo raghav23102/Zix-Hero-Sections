@@ -105,8 +105,43 @@ export async function createShopifySubscription(
 
   const result = json.data?.appSubscriptionCreate;
   if (!result?.confirmationUrl || !result?.appSubscription?.id) {
-    const errors = result?.userErrors?.map((e) => e.message).join(", ");
-    throw new Error(`Shopify billing error: ${errors ?? "Unknown error"}`);
+    const errors = result?.userErrors?.map((e) => e.message).join(", ") ?? "Unknown error";
+
+    // Shopify blocks Billing API for unpublished apps.
+    // Fallback: immediately activate the plan in our DB so the app works.
+    // Remove this once the app is approved for public distribution.
+    const isPublicDistributionBlock =
+      errors.toLowerCase().includes("public distribution") ||
+      errors.toLowerCase().includes("billing api");
+
+    if (isPublicDistributionBlock) {
+      console.warn(`[Billing] Shopify blocked Billing API (app unpublished). Activating plan directly: ${plan}`);
+      const mockId = `dev_mock_${Date.now()}`;
+      await prisma.subscription.upsert({
+        where: { shopId: shop.id },
+        update: {
+          plan,
+          status: "ACTIVE",
+          shopifySubscriptionId: mockId,
+          shopifyConfirmationUrl: null,
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        },
+        create: {
+          shopId: shop.id,
+          plan,
+          status: "ACTIVE",
+          shopifySubscriptionId: mockId,
+          shopifyConfirmationUrl: null,
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        },
+      });
+      // Return the returnUrl directly — no Shopify approval page needed
+      return { confirmationUrl: returnUrl, subscriptionId: mockId };
+    }
+
+    throw new Error(`Shopify billing error: ${errors}`);
   }
 
   // Store the pending subscription

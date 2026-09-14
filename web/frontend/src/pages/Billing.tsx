@@ -96,13 +96,14 @@ export function Billing() {
       const urlParams = new URLSearchParams(window.location.search);
       const hostParam = urlParams.get("host") || "";
       const shopParam = urlParams.get("shop") || "";
-      // Redirect back to dashboard after Shopify billing approval
+      // After Shopify approval, redirect to dashboard
       const returnUrl = `${window.location.origin}/dashboard?host=${hostParam}&shop=${shopParam}&billing_confirmed=true`;
       const response = await billingApi.subscribe(planId, returnUrl);
 
       if (response.data?.confirmationUrl) {
-        // Redirect to Shopify billing confirmation screen
-        window.parent.location.href = response.data.confirmationUrl;
+        // Use window.top to escape the Shopify iframe (required for Shopify billing)
+        const target = window.top || window;
+        target.location.href = response.data.confirmationUrl;
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to start subscription.");
