@@ -152,7 +152,14 @@ app.get("/", (req, res, next) => {
     return next();
   }
   // Public visit without shop query param. Serve the landing page.
-  const landingPagePath = path.resolve(__dirname, "../client/landing.html");
+  let landingPagePath = path.resolve(__dirname, "../client/landing.html");
+  if (!fs.existsSync(landingPagePath)) {
+    landingPagePath = path.resolve(process.cwd(), "dist/client/landing.html");
+    if (!fs.existsSync(landingPagePath)) {
+      landingPagePath = path.resolve(process.cwd(), "web/dist/client/landing.html");
+    }
+  }
+
   if (process.env["NODE_ENV"] === "production") {
     return res.sendFile(landingPagePath);
   } else {
@@ -161,9 +168,17 @@ app.get("/", (req, res, next) => {
 });
 
 // ---- Serve React App in Production ----
-const clientDistPath = path.resolve(__dirname, "../client");
-const htmlPath = path.resolve(__dirname, "index.html");
+let clientDistPath = path.resolve(__dirname, "../client");
+let htmlPath = path.resolve(__dirname, "index.html");
+
 if (process.env["NODE_ENV"] === "production") {
+  if (!fs.existsSync(clientDistPath)) {
+    clientDistPath = path.resolve(process.cwd(), "dist/client");
+    if (!fs.existsSync(clientDistPath)) {
+      clientDistPath = path.resolve(process.cwd(), "web/dist/client");
+    }
+  }
+  
   app.use(express.static(clientDistPath, { maxAge: "1y", index: false }));
   app.get("*", shopify.ensureInstalledOnShop(), (_req, res) => {
     try {
