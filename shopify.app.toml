@@ -31,17 +31,10 @@ api_version = "2026-07"
 
   # ---- MANDATORY GDPR / Privacy compliance webhooks ----
   # Required for Shopify App Store submission and public distribution
-  [[webhooks.subscriptions]]
-  topics = ["customers/data_request"]
-  uri = "/api/webhooks/customers-data-request"
-
-  [[webhooks.subscriptions]]
-  topics = ["customers/redact"]
-  uri = "/api/webhooks/customers-redact"
-
-  [[webhooks.subscriptions]]
-  topics = ["shop/redact"]
-  uri = "/api/webhooks/shop-redact"
+  [webhooks.privacy_compliance]
+  customer_deletion_url = "/api/webhooks/customers/redact"
+  customer_data_request_url = "/api/webhooks/customers/data_request"
+  shop_deletion_url = "/api/webhooks/shop/redact"
 
 [build]
 automatically_update_urls_on_dev = true
