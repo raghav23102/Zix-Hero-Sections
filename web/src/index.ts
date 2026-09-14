@@ -209,7 +209,7 @@ if (fs.existsSync(frontendDist)) {
   console.warn("Frontend dist folder not found. Run 'npm run build' in web/frontend.");
 }
 
-app.use("/*", async (req, res, _next) => {
+app.use("/*", shopify.ensureInstalledOnShop(), async (req, res, _next) => {
   // If the path is an API path, return 404 to avoid returning HTML
   if (req.originalUrl.startsWith("/api/")) {
     return res.status(404).json({ success: false, error: "API route not found" });
