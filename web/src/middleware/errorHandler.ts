@@ -19,7 +19,25 @@ export function errorHandler(
     err.message?.includes("GraphQL Client: Forbidden") ||
     err.message?.includes("Forbidden")
   ) {
-    const shop = req.query["shop"] || req.headers["x-shopify-shop-domain"] || "";
+    let shop = req.query["shop"] || req.headers["x-shopify-shop-domain"] || "";
+    
+    // Attempt to extract shop from session or Bearer token if missing
+    if (!shop) {
+      if (res.locals?.["shopify"]?.session?.shop) {
+        shop = res.locals["shopify"].session.shop;
+      } else if (req.headers.authorization) {
+        try {
+          const token = req.headers.authorization.split("Bearer ")[1];
+          if (token) {
+            const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64").toString());
+            shop = payload.dest.replace("https://", "");
+          }
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+    }
+
     const authUrl = `/api/auth${shop ? `?shop=${shop}` : ""}`;
     
     res.setHeader("X-Shopify-API-Request-Failure-Reauthorize-Url", authUrl);
