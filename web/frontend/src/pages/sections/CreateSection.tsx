@@ -23,19 +23,9 @@ import { templatesApi, sectionsApi } from "../../lib/api";
 import { useAppContext } from "../../contexts/AppContext";
 import type { TemplateDefinition } from "@shared/types";
 import { PlanBadge } from "../../components/shared/PlanBadge";
+import { TemplateThumbnail } from "../../components/shared/TemplateThumbnail";
 
 type TemplateWithAccess = TemplateDefinition & { isAccessible: boolean };
-
-const TEMPLATE_ICONS: Record<string, string> = {
-  "modern-split": "⚡", "fullscreen-image": "🖼️", "video-background": "🎬",
-  "product-showcase": "🛒", fashion: "👗", minimal: "✨", gradient: "🌈",
-  "image-cta": "📢", collection: "📦", sale: "🏷️", countdown: "⏱️",
-  "before-after": "↔️", animated: "🎭", editorial: "💎",
-};
-
-const PLAN_BG: Record<string, string> = {
-  FREE: "#e8f5e9", BASIC: "#e3f2fd", PRO: "#fff8e1", ULTIMATE: "#f3e5f5",
-};
 
 export function CreateSection() {
   const navigate = useNavigate();
@@ -153,8 +143,6 @@ export function CreateSection() {
             }}
           >
             {templates.map((template) => {
-              const icon = TEMPLATE_ICONS[template.id] ?? "🎨";
-              const bgColor = PLAN_BG[template.planRequired] ?? "#f4f4f4";
               const isLocked = !template.isAccessible;
 
               return (
@@ -184,38 +172,7 @@ export function CreateSection() {
                   onKeyDown={(e) => e.key === "Enter" && handleSelectTemplate(template)}
                   id={`select-template-${template.id}`}
                 >
-                  <div
-                    style={{
-                      height: "140px",
-                      background: bgColor,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      position: "relative",
-                      fontSize: "48px",
-                    }}
-                  >
-                    {icon}
-                    {isLocked && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: "8px",
-                          right: "8px",
-                          background: "rgba(0,0,0,0.6)",
-                          borderRadius: "50%",
-                          width: "32px",
-                          height: "32px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: "16px",
-                        }}
-                      >
-                        🔒
-                      </div>
-                    )}
-                  </div>
+                  <TemplateThumbnail templateId={template.id} isLocked={isLocked} />
                   <div style={{ padding: "12px" }}>
                     <BlockStack gap="200">
                       <InlineStack align="space-between" blockAlign="center">

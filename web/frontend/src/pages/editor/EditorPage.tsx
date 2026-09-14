@@ -313,51 +313,90 @@ export function EditorPage() {
                   </BlockStack>
                 )}
 
-                {activeTab === 1 && (
-                  <BlockStack gap="400">
-                    <Text as="h3" variant="headingSm" fontWeight="semibold">Image</Text>
-                    <TextField label="Image URL" value={config.imageUrl ?? ""} onChange={(v) => updateConfig({ imageUrl: v })} autoComplete="off" placeholder="https://..." id="editor-image-url" />
-                    <TextField label="Image Alt Text" value={config.imageAlt ?? ""} onChange={(v) => updateConfig({ imageAlt: v })} autoComplete="off" id="editor-image-alt" />
-                    <Select
-                      label="Image Position"
-                      options={[
-                        { label: "Right", value: "right" },
-                        { label: "Left", value: "left" },
-                        { label: "Center", value: "center" },
-                      ]}
-                      value={config.imagePosition ?? "right"}
-                      onChange={(v) => updateConfig({ imagePosition: v as HeroConfig["imagePosition"] })}
-                      id="editor-image-position"
-                    />
-                    <Select
-                      label="Image Fit"
-                      options={[
-                        { label: "Cover", value: "cover" },
-                        { label: "Contain", value: "contain" },
-                        { label: "Fill", value: "fill" },
-                      ]}
-                      value={config.imageFit ?? "cover"}
-                      onChange={(v) => updateConfig({ imageFit: v as HeroConfig["imageFit"] })}
-                      id="editor-image-fit"
-                    />
-                    {section.templateId === "video-background" && (
-                      <>
-                        <Divider />
-                        <Text as="h3" variant="headingSm" fontWeight="semibold">Video</Text>
-                        <TextField label="Video URL (MP4)" value={config.videoUrl ?? ""} onChange={(v) => updateConfig({ videoUrl: v })} autoComplete="off" id="editor-video-url" />
-                        <TextField label="Fallback Image URL" value={config.videoFallbackImageUrl ?? ""} onChange={(v) => updateConfig({ videoFallbackImageUrl: v })} autoComplete="off" id="editor-video-fallback" />
-                      </>
-                    )}
-                    {section.templateId === "before-after" && (
-                      <>
-                        <Divider />
-                        <Text as="h3" variant="headingSm" fontWeight="semibold">Before/After</Text>
-                        <TextField label="Before Image URL" value={config.beforeImageUrl ?? ""} onChange={(v) => updateConfig({ beforeImageUrl: v })} autoComplete="off" id="editor-before-url" />
-                        <TextField label="After Image URL" value={config.afterImageUrl ?? ""} onChange={(v) => updateConfig({ afterImageUrl: v })} autoComplete="off" id="editor-after-url" />
-                      </>
-                    )}
-                  </BlockStack>
-                )}
+                {activeTab === 1 && (() => {
+                  const features = template?.supportedFeatures ?? [];
+                  const hasVideo = features.includes("video");
+                  const hasImage = features.includes("image") || features.includes("image-fallback") || features.includes("dual-image");
+                  const hasBeforeAfter = features.includes("before-after-slider") || features.includes("dual-image");
+                  return (
+                    <BlockStack gap="400">
+                      {/* Video section — only for video templates */}
+                      {hasVideo && (
+                        <>
+                          <Text as="h3" variant="headingSm" fontWeight="semibold">🎬 Video</Text>
+                          <Banner tone="info">
+                            <Text as="p" variant="bodySm">Paste a direct MP4 video URL (e.g. from Shopify CDN or a public CDN). YouTube/Vimeo links don't work here.</Text>
+                          </Banner>
+                          <TextField
+                            label="Video URL (MP4 required)"
+                            value={config.videoUrl ?? ""}
+                            onChange={(v) => updateConfig({ videoUrl: v })}
+                            autoComplete="off"
+                            placeholder="https://cdn.shopify.com/videos/..."
+                            id="editor-video-url"
+                            helpText="Direct MP4 link only"
+                          />
+                          <TextField
+                            label="Fallback Image (shown on mobile)"
+                            value={config.videoFallbackImageUrl ?? ""}
+                            onChange={(v) => updateConfig({ videoFallbackImageUrl: v })}
+                            autoComplete="off"
+                            placeholder="https://..."
+                            id="editor-video-fallback"
+                          />
+                          <Divider />
+                        </>
+                      )}
+
+                      {/* Before/After images */}
+                      {hasBeforeAfter && (
+                        <>
+                          <Text as="h3" variant="headingSm" fontWeight="semibold">Before / After Images</Text>
+                          <TextField label="Before Image URL" value={config.beforeImageUrl ?? ""} onChange={(v) => updateConfig({ beforeImageUrl: v })} autoComplete="off" placeholder="https://..." id="editor-before-url" />
+                          <TextField label="After Image URL" value={config.afterImageUrl ?? ""} onChange={(v) => updateConfig({ afterImageUrl: v })} autoComplete="off" placeholder="https://..." id="editor-after-url" />
+                          <Divider />
+                        </>
+                      )}
+
+                      {/* Standard image */}
+                      {hasImage && (
+                        <>
+                          <Text as="h3" variant="headingSm" fontWeight="semibold">Image</Text>
+                          <TextField label="Image URL" value={config.imageUrl ?? ""} onChange={(v) => updateConfig({ imageUrl: v })} autoComplete="off" placeholder="https://..." id="editor-image-url" />
+                          <TextField label="Image Alt Text" value={config.imageAlt ?? ""} onChange={(v) => updateConfig({ imageAlt: v })} autoComplete="off" id="editor-image-alt" />
+                          <Select
+                            label="Image Position"
+                            options={[
+                              { label: "Right", value: "right" },
+                              { label: "Left", value: "left" },
+                              { label: "Center", value: "center" },
+                            ]}
+                            value={config.imagePosition ?? "right"}
+                            onChange={(v) => updateConfig({ imagePosition: v as HeroConfig["imagePosition"] })}
+                            id="editor-image-position"
+                          />
+                          <Select
+                            label="Image Fit"
+                            options={[
+                              { label: "Cover", value: "cover" },
+                              { label: "Contain", value: "contain" },
+                              { label: "Fill", value: "fill" },
+                            ]}
+                            value={config.imageFit ?? "cover"}
+                            onChange={(v) => updateConfig({ imageFit: v as HeroConfig["imageFit"] })}
+                            id="editor-image-fit"
+                          />
+                        </>
+                      )}
+
+                      {!hasVideo && !hasImage && !hasBeforeAfter && (
+                        <Banner tone="info">
+                          <Text as="p" variant="bodySm">This template uses a gradient or text-only background — no image is needed.</Text>
+                        </Banner>
+                      )}
+                    </BlockStack>
+                  );
+                })()}
 
                 {activeTab === 2 && (
                   <BlockStack gap="400">

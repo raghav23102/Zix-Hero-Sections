@@ -24,32 +24,9 @@ import { templatesApi } from "../lib/api";
 import { useAppContext } from "../contexts/AppContext";
 import type { TemplateDefinition } from "@shared/types";
 import { PlanBadge } from "../components/shared/PlanBadge";
+import { TemplateThumbnail } from "../components/shared/TemplateThumbnail";
 
 type TemplateWithAccess = TemplateDefinition & { isAccessible: boolean };
-
-const PLAN_COLOR_MAP: Record<string, string> = {
-  FREE: "#e3f5e1",
-  BASIC: "#e1f0ff",
-  PRO: "#fff4e1",
-  ULTIMATE: "#f3e1ff",
-};
-
-const TEMPLATE_ICONS: Record<string, string> = {
-  "modern-split": "⚡",
-  "fullscreen-image": "🖼️",
-  "video-background": "🎬",
-  "product-showcase": "🛒",
-  fashion: "👗",
-  minimal: "✨",
-  gradient: "🌈",
-  "image-cta": "📢",
-  collection: "📦",
-  sale: "🏷️",
-  countdown: "⏱️",
-  "before-after": "↔️",
-  animated: "🎭",
-  editorial: "💎",
-};
 
 export function Templates() {
   const navigate = useNavigate();
@@ -169,14 +146,12 @@ interface TemplateCardProps {
 }
 
 function TemplateCard({ template, onUse, onUpgrade }: TemplateCardProps) {
-  const icon = TEMPLATE_ICONS[template.id] ?? "🎨";
-  const bgColor = PLAN_COLOR_MAP[template.planRequired] ?? "#f4f4f4";
   const isLocked = !template.isAccessible;
 
   return (
     <div
       style={{
-        border: "1px solid #e1e3e5",
+        border: isLocked ? "1px solid #e1e3e5" : "1px solid #e1e3e5",
         borderRadius: "12px",
         overflow: "hidden",
         transition: "box-shadow 0.2s ease, transform 0.2s ease",
@@ -184,8 +159,7 @@ function TemplateCard({ template, onUse, onUpgrade }: TemplateCardProps) {
         position: "relative",
       }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.boxShadow =
-          "0 8px 24px rgba(0,0,0,0.12)";
+        (e.currentTarget as HTMLDivElement).style.boxShadow = "0 8px 24px rgba(0,0,0,0.12)";
         (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)";
       }}
       onMouseLeave={(e) => {
@@ -193,47 +167,8 @@ function TemplateCard({ template, onUse, onUpgrade }: TemplateCardProps) {
         (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
       }}
     >
-      {/* Preview area */}
-      <div
-        style={{
-          height: "160px",
-          background: bgColor,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          position: "relative",
-          flexDirection: "column",
-          gap: "8px",
-        }}
-      >
-        <span style={{ fontSize: "48px" }}>{icon}</span>
-        <Text as="span" variant="bodySm" tone="subdued">
-          {template.category}
-        </Text>
-
-        {isLocked && (
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background: "rgba(0,0,0,0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexDirection: "column",
-              gap: "8px",
-              borderRadius: "0",
-            }}
-          >
-            <span style={{ fontSize: "32px" }}>🔒</span>
-            <Text as="span" variant="bodySm" tone="magic-subdued">
-              <span style={{ color: "#fff" }}>
-                Requires {template.planRequired} plan
-              </span>
-            </Text>
-          </div>
-        )}
-      </div>
+      {/* Wireframe thumbnail preview */}
+      <TemplateThumbnail templateId={template.id} isLocked={isLocked} />
 
       {/* Card Content */}
       <div style={{ padding: "16px" }}>
