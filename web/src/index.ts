@@ -167,7 +167,17 @@ if (process.env["NODE_ENV"] === "production") {
   app.use(express.static(clientDistPath, { maxAge: "1y", index: false }));
   app.get("*", shopify.ensureInstalledOnShop(), (_req, res) => {
     try {
-      let html = fs.readFileSync(htmlPath, "utf-8");
+      let html = "";
+      try {
+        html = fs.readFileSync(htmlPath, "utf-8");
+      } catch (e) {
+        try {
+          html = fs.readFileSync(path.resolve(process.cwd(), "dist/client/index.html"), "utf-8");
+        } catch (e2) {
+          html = fs.readFileSync(path.resolve(process.cwd(), "web/dist/client/index.html"), "utf-8");
+        }
+      }
+      
       html = html.replace(
         "<head>",
         `<head><script>window.SHOPIFY_API_KEY = "${process.env.SHOPIFY_API_KEY || ""}";</script>`
