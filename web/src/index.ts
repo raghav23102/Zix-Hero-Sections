@@ -67,6 +67,24 @@ if (process.env["NODE_ENV"] === "development") {
   app.use("/api", cors({ origin: "http://localhost:3001", credentials: true }));
 }
 
+// ---- Diagnostic Route ----
+app.get("/api/diagnostic", async (req, res) => {
+  try {
+    const dbTest = await prisma.session.count().catch((e) => e.message);
+    res.json({
+      hasApiKey: !!process.env.SHOPIFY_API_KEY,
+      hasApiSecret: !!process.env.SHOPIFY_API_SECRET,
+      apiSecretLength: process.env.SHOPIFY_API_SECRET?.length || 0,
+      hasAppUrl: !!process.env.SHOPIFY_APP_URL,
+      hasDbUrl: !!process.env.DATABASE_URL,
+      dbStatus: typeof dbTest === "number" ? "Connected! Sessions count: " + dbTest : "DB Error: " + dbTest,
+      cookies: req.cookies,
+    });
+  } catch (err) {
+    res.json({ error: String(err) });
+  }
+});
+
 // ---- Shopify auth middleware ----
 app.get(shopify.config.auth.path, shopify.auth.begin());
 app.get(
