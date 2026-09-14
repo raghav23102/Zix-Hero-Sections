@@ -120,7 +120,8 @@ app.get(shopify.config.auth.path, async (req, res, next) => {
   try {
     const shop = req.query["shop"];
     if (!shop) {
-      return res.status(400).send("No shop provided");
+      res.status(400).send("No shop provided");
+      return;
     }
     
     // Force online token request to bypass Shopify's block on non-expiring offline tokens
@@ -158,7 +159,8 @@ app.get(
       console.log("[Auth Callback] Shop setup complete:", session.shop);
 
       // 4. If we requested online tokens but got an offline one, kick off the online flow
-      if (shopify.config.auth.useOnlineTokens && !session.isOnline) {
+      const useOnline = (shopify.config.auth as any).useOnlineTokens || true;
+      if (useOnline && !session.isOnline) {
         console.log("[Auth Callback] Received offline token, redirecting to online token OAuth");
         await shopify.api.auth.begin({
           shop: session.shop,
