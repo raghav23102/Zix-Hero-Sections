@@ -38,6 +38,10 @@ export default defineConfig({
     },
   },
   define: {
-    "process.env.SHOPIFY_API_KEY": JSON.stringify(process.env.SHOPIFY_API_KEY || ""),
+    "process.env.SHOPIFY_API_KEY": JSON.stringify(
+      process.env.VITE_SHOPIFY_API_KEY || 
+      process.env.SHOPIFY_API_KEY || 
+      "b032eb456c32ff2cc4b6a036d39feb1c"
+    ),
   },
 });

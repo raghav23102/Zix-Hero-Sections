@@ -1,9 +1,13 @@
 {
   "version": 2,
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
   "outputDirectory": "dist/client",
   "functions": {
     "api/index.ts": {
-      "includeFiles": "dist/**/*.html"
+      "includeFiles": "dist/**",
+      "memory": 1024,
+      "maxDuration": 30
     }
   },
   "routes": [
