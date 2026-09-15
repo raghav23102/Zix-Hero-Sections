@@ -27,8 +27,12 @@ async function request<T>(
   if (globalAppInstance) {
     try {
       token = await getSessionToken(globalAppInstance);
-    } catch (e) {
-      console.warn("Could not retrieve session token", e);
+    } catch (e: any) {
+      console.warn("Could not retrieve session token. Error details:", e?.message || e);
+      // If we completely lost the token, the App Bridge iframe context is corrupted.
+      // Force a reload to restore the Shopify session.
+      window.location.reload();
+      return new Promise(() => {}) as Promise<T>;
     }
   }
 
