@@ -1,16 +1,16 @@
 name = "zix-hero-sections"
 client_id = "b032eb456c32ff2cc4b6a036d39feb1c"
-application_url = "{{ SHOPIFY_APP_URL }}"
+application_url = "https://zixherosections.vercel.app"
 embedded = true
 organization_id = "5157587"
 
 [access_scopes]
-scopes = "write_themes,read_themes,read_products,write_products"
+scopes = "write_themes,read_themes"
 
 [auth]
 redirect_urls = [
-  "{{ SHOPIFY_APP_URL }}/api/auth/callback",
-  "{{ SHOPIFY_APP_URL }}/api/auth/shopify/callback"
+  "https://zixherosections.vercel.app/api/auth/callback",
+  "https://zixherosections.vercel.app/api/auth/shopify/callback"
 ]
 
 [webhooks]

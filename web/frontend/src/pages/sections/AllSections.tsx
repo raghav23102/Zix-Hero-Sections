@@ -21,6 +21,7 @@ import {
   Badge,
   ButtonGroup,
   Tooltip,
+  Modal,
 } from "@shopify/polaris";
 import {
   PlusCircleIcon,
@@ -42,6 +43,8 @@ export function AllSections() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [sectionToDelete, setSectionToDelete] = useState<{id: string, name: string} | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -60,23 +63,28 @@ export function AllSections() {
     void load();
   }, [load]);
 
-  const handleDelete = useCallback(
-    async (id: string, name: string) => {
-      if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
-      try {
-        setActionLoading(id);
-        setError(null);
-        await sectionsApi.delete(id);
-        setSuccessMsg(`"${name}" deleted successfully.`);
-        await Promise.all([load(), refresh()]);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unable to delete section.");
-      } finally {
-        setActionLoading(null);
-      }
-    },
-    [load, refresh]
-  );
+  const confirmDelete = useCallback((id: string, name: string) => {
+    setSectionToDelete({ id, name });
+    setDeleteModalOpen(true);
+  }, []);
+
+  const executeDelete = useCallback(async () => {
+    if (!sectionToDelete) return;
+    const { id, name } = sectionToDelete;
+    try {
+      setDeleteModalOpen(false);
+      setActionLoading(id);
+      setError(null);
+      await sectionsApi.delete(id);
+      setSuccessMsg(`"${name}" deleted successfully.`);
+      await Promise.all([load(), refresh()]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to delete section.");
+    } finally {
+      setActionLoading(null);
+      setSectionToDelete(null);
+    }
+  }, [sectionToDelete, load, refresh]);
 
   const handleDuplicate = useCallback(
     async (id: string, name: string) => {
@@ -174,7 +182,7 @@ export function AllSections() {
             <Card>
               <EmptyState
                 heading="No hero sections yet"
-                image=""
+                image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
                 action={{
                   content: "Create Hero Section",
                   onAction: () => navigate("/sections/create"),
@@ -265,7 +273,7 @@ export function AllSections() {
                           icon={DeleteIcon}
                           loading={actionLoading === section.id}
                           onClick={() =>
-                            void handleDelete(section.id, section.name)
+                            confirmDelete(section.id, section.name)
                           }
                           id={`delete-${section.id}`}
                         >
@@ -280,6 +288,29 @@ export function AllSections() {
           )}
         </Layout.Section>
       </Layout>
+
+      <Modal
+        open={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        title={`Delete "${sectionToDelete?.name}"?`}
+        primaryAction={{
+          content: "Delete",
+          destructive: true,
+          onAction: executeDelete,
+        }}
+        secondaryActions={[
+          {
+            content: "Cancel",
+            onAction: () => setDeleteModalOpen(false),
+          },
+        ]}
+      >
+        <Modal.Section>
+          <Text as="p">
+            Are you sure you want to delete this section? This cannot be undone.
+          </Text>
+        </Modal.Section>
+      </Modal>
     </Page>
   );
 }

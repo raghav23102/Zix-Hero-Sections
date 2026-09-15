@@ -112,7 +112,11 @@ billingRouter.post("/subscribe", async (req, res) => {
   }
 
   const { plan, returnUrl } = parsed.data;
-  const appUrl = process.env["SHOPIFY_APP_URL"] ?? "";
+  const appUrl = process.env["SHOPIFY_APP_URL"];
+  if (!appUrl) {
+    res.status(500).json({ success: false, error: "Server misconfiguration: SHOPIFY_APP_URL is missing." });
+    return;
+  }
   const confirmUrl = returnUrl ?? `${appUrl}/billing?confirmed=true`;
 
   const result = await createShopifySubscription(
