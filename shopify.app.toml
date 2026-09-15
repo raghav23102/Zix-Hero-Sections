@@ -42,3 +42,8 @@ dev_store_url = ""
 
 [pos]
 embedded = false
+
+[[extensions]]
+type = "theme_app_extension"
+name = "Zix Hero Sections"
+handle = "zix-hero-sections"

@@ -28,6 +28,8 @@ import {
   EditIcon,
   DeleteIcon,
   DuplicateIcon,
+  ExternalIcon,
+  ThemeIcon,
 } from "@shopify/polaris-icons";
 import { sectionsApi } from "../../lib/api";
 import { useAppContext } from "../../contexts/AppContext";
@@ -36,7 +38,7 @@ import { SectionStatusBadge } from "../../components/shared/SectionStatusBadge";
 
 export function AllSections() {
   const navigate = useNavigate();
-  const { usage, refresh } = useAppContext();
+  const { usage, shop, refresh } = useAppContext();
   const [sections, setSections] = useState<HeroSectionData[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -45,6 +47,15 @@ export function AllSections() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [sectionToDelete, setSectionToDelete] = useState<{id: string, name: string} | null>(null);
+  const [showThemeBanner, setShowThemeBanner] = useState(true);
+
+  // Build a deep-link to the Shopify Theme Editor for this app's block
+  const themeEditorUrl = React.useMemo(() => {
+    if (!shop?.shopDomain) return null;
+    const shopName = shop.shopDomain.replace(".myshopify.com", "");
+    // This URL opens Theme Editor on the home page with the App Blocks panel open
+    return `https://${shop.shopDomain}/admin/themes/current/editor?context=apps`;
+  }, [shop]);
 
   const load = useCallback(async () => {
     try {
@@ -138,8 +149,51 @@ export function AllSections() {
         disabled: !usage?.canCreate,
         onAction: () => navigate("/sections/create"),
       }}
+      secondaryActions={[
+        {
+          content: "Add to Theme",
+          icon: ExternalIcon,
+          onAction: () => {
+            if (themeEditorUrl) {
+              window.open(themeEditorUrl, "_blank");
+            }
+          },
+          helpText: "Open Theme Editor to place your hero section",
+        },
+      ]}
     >
       <Layout>
+        {/* Setup Guide Banner — shown to help merchants add sections to their theme */}
+        {showThemeBanner && sections.length === 0 && (
+          <Layout.Section>
+            <Banner
+              title="How to add a section to your store"
+              tone="info"
+              onDismiss={() => setShowThemeBanner(false)}
+              action={{
+                content: "Open Theme Editor",
+                icon: ExternalIcon,
+                onAction: () => themeEditorUrl && window.open(themeEditorUrl, "_blank"),
+              }}
+            >
+              <BlockStack gap="200">
+                <Text as="p">
+                  Follow these steps to display your hero section on your storefront:
+                </Text>
+                <Text as="p">
+                  <strong>1.</strong> Create a hero section using the button above.
+                </Text>
+                <Text as="p">
+                  <strong>2.</strong> Click <strong>"Open Theme Editor"</strong> → click <strong>"Add section"</strong> → find <strong>"Zix Hero Section"</strong> under Apps.
+                </Text>
+                <Text as="p">
+                  <strong>3.</strong> Customize the section settings in the Theme Editor sidebar and click Save.
+                </Text>
+              </BlockStack>
+            </Banner>
+          </Layout.Section>
+        )}
+
         {!usage?.canCreate && (
           <Layout.Section>
             <Banner
