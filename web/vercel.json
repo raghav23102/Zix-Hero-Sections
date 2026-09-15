@@ -1,9 +1,9 @@
 {
   "version": 2,
-  "outputDirectory": "dist/client",
+  "outputDirectory": "build/client",
   "functions": {
     "api/index.ts": {
-      "includeFiles": "dist/**",
+      "includeFiles": "build/**",
       "memory": 1024,
       "maxDuration": 30
     }
