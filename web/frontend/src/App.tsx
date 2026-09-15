@@ -37,8 +37,8 @@ export default function App() {
       .then(r => r.json())
       .then(data => {
         const urlParams = new URLSearchParams(window.location.search);
-        // Use Vite-injected env var first, fallback to API
-        const apiKey = process.env.SHOPIFY_API_KEY || data.apiKey || "";
+        // Use Vite-injected env var, fallback to API, fallback to known Client ID
+        const apiKey = process.env.SHOPIFY_API_KEY || data.apiKey || "b032eb456c32ff2cc4b6a036d39feb1c";
         
         setConfig({
           host: urlParams.get("host") || data.hostName || "",

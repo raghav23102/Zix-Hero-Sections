@@ -96,7 +96,7 @@ export function Billing() {
       // Generate the Shopify Admin URL directly for the return URL
       // This ensures Shopify safely escapes the iframe and reinjects host/shop params upon return
       const shopName = usage?.shopDomain?.replace(".myshopify.com", "") || "";
-      const apiKey = process.env.SHOPIFY_API_KEY || "";
+      const apiKey = process.env.SHOPIFY_API_KEY || "b032eb456c32ff2cc4b6a036d39feb1c";
       let returnUrl = window.location.origin; // fallback
       if (shopName && apiKey) {
         returnUrl = `https://admin.shopify.com/store/${shopName}/apps/${apiKey}/templates?billing_confirmed=true`;
