@@ -73,9 +73,15 @@ export function errorHandler(
   }
 
   // Generic error
-  res.status(500).json({
-    success: false,
-    error: "Something went wrong. Please try again.",
-    details: err.message,
-  });
+  res.status(500).send(`
+    <html>
+      <head><title>App Error</title></head>
+      <body style="font-family: sans-serif; padding: 2rem;">
+        <h1 style="color: red;">App Error</h1>
+        <p><strong>Error Message:</strong> ${err.message}</p>
+        <pre style="background: #eee; padding: 1rem; overflow: auto;">${err.stack}</pre>
+        <p>Please check your Vercel logs or contact support.</p>
+      </body>
+    </html>
+  `);
 }
