@@ -93,18 +93,20 @@ export function Billing() {
     try {
       setSubscribing(planId);
       setError(null);
-      // Generate the Shopify Admin URL directly for the return URL
-      // This ensures Shopify safely escapes the iframe and reinjects host/shop params upon return
-      const shopName = usage?.shopDomain?.replace(".myshopify.com", "") || "";
-      const apiKey = process.env.SHOPIFY_API_KEY || "b032eb456c32ff2cc4b6a036d39feb1c";
-      let returnUrl = window.location.origin; // fallback
-      if (shopName && apiKey) {
+      // Extract shop from either AppContext or the current URL (if context isn't loaded)
+      const urlParams = new URLSearchParams(window.location.search);
+      const shopParam = usage?.shopDomain || urlParams.get("shop") || "";
+      const shopName = shopParam.replace(".myshopify.com", "");
+      
+      const apiKey = "b032eb456c32ff2cc4b6a036d39feb1c"; // Guaranteed correct Client ID
+      
+      let returnUrl = "";
+      if (shopName) {
+        // This ensures Shopify safely escapes the iframe and reinjects host/shop params upon return
         returnUrl = `https://admin.shopify.com/store/${shopName}/apps/${apiKey}/templates?billing_confirmed=true`;
       } else {
-        const urlParams = new URLSearchParams(window.location.search);
-        const hostParam = urlParams.get("host") || "";
-        const shopParam = urlParams.get("shop") || "";
-        returnUrl = `${window.location.origin}/templates?host=${hostParam}&shop=${shopParam}&billing_confirmed=true`;
+        // Extreme fallback if shop is completely lost
+        returnUrl = `${window.location.origin}/templates?billing_confirmed=true`;
       }
       
       const response = await billingApi.subscribe(planId, returnUrl);
