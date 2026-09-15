@@ -97,7 +97,7 @@ export function Billing() {
       const hostParam = urlParams.get("host") || "";
       const shopParam = urlParams.get("shop") || "";
       // After Shopify approval, redirect to dashboard
-      const returnUrl = `${window.location.origin}/dashboard?host=${hostParam}&shop=${shopParam}&billing_confirmed=true`;
+      const returnUrl = `${window.location.origin}/templates?host=${hostParam}&shop=${shopParam}&billing_confirmed=true`;
       const response = await billingApi.subscribe(planId, returnUrl);
 
       if (response.data?.confirmationUrl) {
