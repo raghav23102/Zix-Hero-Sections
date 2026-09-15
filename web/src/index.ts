@@ -172,12 +172,14 @@ if (process.env["NODE_ENV"] !== "production") {
 }
 
 // ---- Frontend Static Files & Catch-all ----
-const frontendDist = path.join(__dirname, "../frontend/dist");
+// After tsc compiles src/ → dist/server/, __dirname = web/dist/server/
+// Vite builds frontend → web/dist/client/, so relative path is ../client
+const frontendDist = path.join(__dirname, "../client");
 
 if (fs.existsSync(frontendDist)) {
   app.use(express.static(frontendDist, { index: false }));
 } else {
-  console.warn("Frontend dist folder not found. Run 'npm run build' in web/frontend.");
+  console.warn("WARN: Frontend dist not found at", frontendDist, "— run 'npm run build' in web/");
 }
 
 app.use("/*", shopify.ensureInstalledOnShop(), async (req, res, _next) => {
