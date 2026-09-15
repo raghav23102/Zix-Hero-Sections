@@ -55,11 +55,19 @@ async function request<T>(
         absoluteUrl += (absoluteUrl.includes("?") ? "&" : "?") + `shop=${shopParam}`;
       }
         
-      if (globalAppInstance) {
-        const redirect = Redirect.create(globalAppInstance);
-        redirect.dispatch(Redirect.Action.REMOTE, absoluteUrl);
-      } else {
-        window.parent.location.href = absoluteUrl;
+      // Force a top-level redirect to restore the session
+      try {
+        if (window.top) {
+          window.top.location.href = absoluteUrl;
+        } else {
+          window.location.href = absoluteUrl;
+        }
+      } catch (e) {
+        // Fallback to App Bridge if cross-origin blocks window.top
+        if (globalAppInstance) {
+          const redirect = Redirect.create(globalAppInstance);
+          redirect.dispatch(Redirect.Action.REMOTE, absoluteUrl);
+        }
       }
       return new Promise(() => {}) as Promise<T>; // Never resolve to stop execution
     }
