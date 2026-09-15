@@ -1,7 +1,5 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "installCommand": "npm install",
   "outputDirectory": "dist/client",
   "functions": {
     "api/index.ts": {
@@ -28,6 +26,14 @@
     {
       "src": "/",
       "dest": "/landing.html"
+    },
+    {
+      "src": "/privacy",
+      "dest": "/privacy.html"
+    },
+    {
+      "src": "/privacy-policy",
+      "dest": "/privacy.html"
     },
     {
       "handle": "filesystem"

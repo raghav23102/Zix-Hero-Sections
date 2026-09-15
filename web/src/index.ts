@@ -38,7 +38,7 @@ const shopify = shopifyApp({
     apiSecretKey: process.env["SHOPIFY_API_SECRET"] ?? "",
     scopes: process.env.SCOPES ? process.env.SCOPES.split(",") : ["write_themes", "read_themes"],
     hostName: SHOPIFY_APP_URL.replace(/https?:\/\//, "").replace(/\/$/, ""),
-    apiVersion: "2026-07" as any,
+    apiVersion: LATEST_API_VERSION,
     isEmbeddedApp: true,
   },
   useOnlineTokens: true,
@@ -181,6 +181,21 @@ if (fs.existsSync(frontendDist)) {
 } else {
   console.warn("WARN: Frontend dist not found at", frontendDist, "— run 'npm run build' in web/");
 }
+
+// ---- Public Pages (Privacy Policy & Landing) ----
+app.get(["/privacy", "/privacy-policy", "/privacy.html"], (_req, res) => {
+  const candidatePaths = [
+    path.join(frontendDist, "privacy.html"),
+    path.join(__dirname, "../client/privacy.html"),
+    path.join(__dirname, "../../frontend/public/privacy.html"),
+  ];
+  for (const candidate of candidatePaths) {
+    if (fs.existsSync(candidate)) {
+      return res.sendFile(candidate);
+    }
+  }
+  return res.status(404).send("Privacy Policy not found");
+});
 
 app.use("/*", shopify.ensureInstalledOnShop(), async (req, res, _next) => {
   // If the path is an API path, return 404 to avoid returning HTML
