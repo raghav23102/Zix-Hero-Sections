@@ -82,7 +82,7 @@ export async function createShopifySubscription(
   };
 
   const response = await fetch(
-    `https://${shopDomain}/admin/api/2026-07/graphql.json`,
+    `https://${shopDomain}/admin/api/2024-04/graphql.json`,
     {
       method: "POST",
       headers: {
