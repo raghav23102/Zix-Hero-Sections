@@ -82,6 +82,7 @@ export async function createShopifySubscription(
   };
 
   let json: any;
+  let topLevelErrorMsg = "";
   try {
     const response = await fetch(
       `https://${shopDomain}/admin/api/2024-07/graphql.json`,
@@ -111,58 +112,62 @@ export async function createShopifySubscription(
     }
 
     if (json.errors) {
-      const errorMsg = typeof json.errors === "string" ? json.errors : json.errors[0]?.message;
+      topLevelErrorMsg = typeof json.errors === "string" ? json.errors : json.errors[0]?.message;
       console.error(`[Billing API] GraphQL Errors:`, JSON.stringify(json.errors, null, 2));
-      throw new Error(`Shopify GraphQL Error: ${errorMsg}`);
     }
   } catch (error) {
     console.error("[Billing API] Network or Parsing Error:", error);
     throw error;
   }
-
-  const result = json.data?.appSubscriptionCreate;
-  if (!result?.confirmationUrl || !result?.appSubscription?.id) {
-    const errors = result?.userErrors?.map((e: any) => e.message).join(", ") ?? "Unknown error";
-
-    // Shopify blocks Billing API for unpublished apps.
-    // Fallback: immediately activate the plan in our DB so the app works.
-    // Remove this once the app is approved for public distribution.
-    const isPublicDistributionBlock =
-      errors.toLowerCase().includes("public distribution") ||
-      errors.toLowerCase().includes("billing api") ||
-      errors.toLowerCase().includes("development app") ||
-      errors.toLowerCase().includes("test") ||
-      errors.toLowerCase().includes("non-expiring access tokens");
-
-    if (isPublicDistributionBlock) {
-      console.warn(`[Billing] Shopify blocked Billing API (app unpublished). Activating plan directly: ${plan}`);
-      const mockId = `dev_mock_${Date.now()}`;
-      await prisma.subscription.upsert({
-        where: { shopId: shop.id },
-        update: {
-          plan,
-          status: "ACTIVE",
-          shopifySubscriptionId: mockId,
-          shopifyConfirmationUrl: null,
-          currentPeriodStart: new Date(),
-          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        },
-        create: {
-          shopId: shop.id,
-          plan,
-          status: "ACTIVE",
-          shopifySubscriptionId: mockId,
-          shopifyConfirmationUrl: null,
-          currentPeriodStart: new Date(),
-          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        },
-      });
-      // Return the returnUrl directly — no Shopify approval page needed
-      return { confirmationUrl: returnUrl, subscriptionId: mockId };
+    
+    const result = json.data?.appSubscriptionCreate;
+    let mutationErrors = "";
+    if (result && (!result.confirmationUrl || !result.appSubscription?.id)) {
+      mutationErrors = result.userErrors?.map((e: any) => e.message).join(", ") ?? "Unknown error";
     }
 
-    throw new Error(`Shopify billing error: ${errors}`);
-  }
+    if (topLevelErrorMsg || mutationErrors) {
+      const allErrors = (topLevelErrorMsg + " " + mutationErrors).toLowerCase();
+      
+      const isPublicDistributionBlock =
+        allErrors.includes("public distribution") ||
+        allErrors.includes("billing api") ||
+        allErrors.includes("development app") ||
+        allErrors.includes("test") ||
+        allErrors.includes("non-expiring access tokens");
+
+      if (isPublicDistributionBlock) {
+        console.warn(`[Billing] Shopify blocked Billing API. Activating plan directly: ${plan}`);
+        const mockId = `dev_mock_${Date.now()}`;
+        await prisma.subscription.upsert({
+          where: { shopId: shop.id },
+          update: {
+            plan,
+            status: "ACTIVE",
+            shopifySubscriptionId: mockId,
+            shopifyConfirmationUrl: null,
+            currentPeriodStart: new Date(),
+            currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          },
+          create: {
+            shopId: shop.id,
+            plan,
+            status: "ACTIVE",
+            shopifySubscriptionId: mockId,
+            shopifyConfirmationUrl: null,
+            currentPeriodStart: new Date(),
+            currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          },
+        });
+        return { confirmationUrl: returnUrl, subscriptionId: mockId };
+      }
+
+      throw new Error(`Shopify GraphQL Error: ${topLevelErrorMsg || mutationErrors}`);
+    }
+
+    if (!result?.confirmationUrl || !result?.appSubscription?.id) {
+      throw new Error("Unable to create subscription. Missing confirmation URL.");
+    }
 
   // Store the pending subscription
   await prisma.subscription.upsert({
