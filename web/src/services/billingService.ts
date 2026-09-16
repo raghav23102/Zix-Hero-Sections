@@ -2,7 +2,7 @@
 // Billing Service — Shopify Recurring Application Charges
 // ============================================================
 
-import { shopifyApi, ApiVersion } from "@shopify/shopify-api";
+import { shopifyApi, ApiVersion, LATEST_API_VERSION } from "@shopify/shopify-api";
 import { prisma } from "../db.js";
 import { Plan, PLAN_PRICES } from "../shared/types.js";
 import { handlePlanDowngrade, syncActiveSections } from "./usageService.js";
