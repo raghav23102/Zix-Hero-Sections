@@ -144,6 +144,14 @@ billingRouter.post("/subscribe", async (req, res) => {
     });
   } catch (error: any) {
     console.error("[Billing Subscribe Error]", error);
+    
+    if (error.message === "SHOPIFY_AUTH_REQUIRED") {
+      const authUrl = `/api/auth?shop=${shop.shopDomain}`;
+      res.setHeader("X-Shopify-API-Request-Failure-Reauthorize-Url", authUrl);
+      res.status(403).json({ success: false, error: "Authentication expired. Please reload the app." });
+      return;
+    }
+
     res.status(400).json({
       success: false,
       error: error.message || "Failed to process subscription with Shopify",

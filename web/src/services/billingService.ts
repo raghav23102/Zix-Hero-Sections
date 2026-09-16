@@ -97,6 +97,9 @@ export async function createShopifySubscription(
     
     if (!response.ok) {
       console.error(`[Billing API] HTTP Error: ${response.status} ${response.statusText}`);
+      if (response.status === 401) {
+        throw new Error("SHOPIFY_AUTH_REQUIRED");
+      }
     }
     
     const text = await response.text();
@@ -108,8 +111,9 @@ export async function createShopifySubscription(
     }
 
     if (json.errors) {
+      const errorMsg = typeof json.errors === "string" ? json.errors : json.errors[0]?.message;
       console.error(`[Billing API] GraphQL Errors:`, JSON.stringify(json.errors, null, 2));
-      throw new Error(`Shopify GraphQL Error: ${json.errors[0]?.message}`);
+      throw new Error(`Shopify GraphQL Error: ${errorMsg}`);
     }
   } catch (error) {
     console.error("[Billing API] Network or Parsing Error:", error);
