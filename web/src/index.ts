@@ -42,7 +42,7 @@ const shopify = shopifyApp({
     apiVersion: LATEST_API_VERSION,
     isEmbeddedApp: true,
   },
-  useOnlineTokens: true,
+  useOnlineTokens: false,
   auth: {
     path: "/api/auth",
     callbackPath: "/api/auth/callback",
