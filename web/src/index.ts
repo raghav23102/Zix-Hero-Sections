@@ -47,9 +47,6 @@ const shopify = shopifyApp({
     path: "/api/auth",
     callbackPath: "/api/auth/callback",
   },
-  webhooks: {
-    path: "/api/webhooks",
-  },
   sessionStorage: new PrismaSessionStorage(prisma),
 });
 
@@ -120,57 +117,25 @@ app.get("/api/diagnostic", async (req, res) => {
 app.get(shopify.config.auth.path, shopify.auth.begin());
 app.get(
   shopify.config.auth.callbackPath,
-  async (req, res, next) => {
-    console.log(`[Auth Callback] Starting callback for ${req.query.shop}`);
-    
-    // TEST DB CONNECTION BEFORE OAUTH
-    try {
-      console.log(`[Auth Callback] Pinging database...`);
-      // Use Promise.race to enforce a 3-second timeout for the DB ping
-      await Promise.race([
-        prisma.$queryRaw`SELECT 1`,
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Database connection timed out after 3 seconds.")), 3000))
-      ]);
-      console.log(`[Auth Callback] Database ping successful!`);
-      next();
-    } catch (err: any) {
-      console.error("[Auth Callback] FATAL: Database connection failed!", err);
-      // Fail explicitly right away
-      res.status(500).send(`
-        <html>
-          <body>
-            <h2>Database Connection Error</h2>
-            <p>The app could not connect to the database in Vercel. Please check your DATABASE_URL.</p>
-            <pre>${err.message}</pre>
-          </body>
-        </html>
-      `);
-    }
-  },
   shopify.auth.callback(),
   async (req, res, next) => {
     try {
       const session = res.locals.shopify.session;
       if (session) {
         console.log(`[Auth Callback] Setting up shop in DB: ${session.shop}`);
-        // Setup shop in our DB using the static import
         await setupShop(session);
         console.log(`[Auth Callback] Shop setup complete: ${session.shop}`);
       }
       next();
     } catch (err) {
       console.error("[Auth Callback] Error setting up shop in DB:", err);
-      next(err); // Fail explicitly
+      next(err);
     }
   },
   shopify.redirectToShopifyOrAppRoot()
 );
 
-// ---- Webhooks (must come before auth validation) ----
-app.post(
-  shopify.config.webhooks.path,
-  shopify.processWebhooks({ webhookHandlers: {} })
-);
+// ---- Webhooks ----
 app.use("/api/webhooks", webhooksRouter);
 
 // ---- App Config Route for Frontend ----
