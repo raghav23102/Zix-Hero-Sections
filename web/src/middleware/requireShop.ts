@@ -4,6 +4,7 @@
 
 import { Request, Response, NextFunction } from "express";
 import { getShopByDomain } from "../services/shopService.js";
+import { prisma } from "../db.js";
 
 export async function requireShop(
   req: Request,
@@ -29,11 +30,15 @@ export async function requireShop(
   }
 
   if (!shop.isActive) {
-    res.status(403).json({
-      success: false,
-      error: "Shop is not active. Please reinstall the app.",
+    // If they reached here, they have a valid session (via requireAuth).
+    // This happens if Shopify didn't clear the session during uninstallation,
+    // so we automatically re-activate the shop.
+    await prisma.shop.update({
+      where: { id: shop.id },
+      data: { isActive: true },
     });
-    return;
+    shop.isActive = true;
+    console.log(`[requireShop] Auto-reactivated shop ${shopDomain}`);
   }
 
   // Attach shop to request for downstream handlers
