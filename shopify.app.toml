@@ -13,6 +13,9 @@ redirect_urls = [
   "https://zixherosections.vercel.app/api/auth/shopify/callback"
 ]
 
+[access]
+use_legacy_install_flow = false
+
 [webhooks]
 api_version = "2026-07"
 
