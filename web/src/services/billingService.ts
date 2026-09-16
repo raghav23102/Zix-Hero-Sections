@@ -125,7 +125,9 @@ export async function createShopifySubscription(
     // Remove this once the app is approved for public distribution.
     const isPublicDistributionBlock =
       errors.toLowerCase().includes("public distribution") ||
-      errors.toLowerCase().includes("billing api");
+      errors.toLowerCase().includes("billing api") ||
+      errors.toLowerCase().includes("development app") ||
+      errors.toLowerCase().includes("test");
 
     if (isPublicDistributionBlock) {
       console.warn(`[Billing] Shopify blocked Billing API (app unpublished). Activating plan directly: ${plan}`);

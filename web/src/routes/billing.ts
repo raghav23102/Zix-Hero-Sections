@@ -107,7 +107,8 @@ billingRouter.post("/subscribe", async (req, res) => {
 
   const parsed = subscribePlanSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ success: false, error: "Invalid plan selection." });
+    console.error("[Billing] Zod validation failed:", parsed.error, "Body:", req.body);
+    res.status(400).json({ success: false, error: "Invalid plan selection or missing payload." });
     return;
   }
 
