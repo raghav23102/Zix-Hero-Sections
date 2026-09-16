@@ -131,7 +131,8 @@ export async function createShopifySubscription(
       errors.toLowerCase().includes("public distribution") ||
       errors.toLowerCase().includes("billing api") ||
       errors.toLowerCase().includes("development app") ||
-      errors.toLowerCase().includes("test");
+      errors.toLowerCase().includes("test") ||
+      errors.toLowerCase().includes("non-expiring access tokens");
 
     if (isPublicDistributionBlock) {
       console.warn(`[Billing] Shopify blocked Billing API (app unpublished). Activating plan directly: ${plan}`);
