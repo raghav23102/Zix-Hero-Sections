@@ -47,6 +47,9 @@ const shopify = shopifyApp({
     path: "/api/auth",
     callbackPath: "/api/auth/callback",
   },
+  webhooks: {
+    path: "/api/webhooks",
+  },
   sessionStorage: new PrismaSessionStorage(prisma),
 });
 
@@ -136,6 +139,10 @@ app.get(
 );
 
 // ---- Webhooks ----
+app.post(
+  shopify.config.webhooks.path,
+  shopify.processWebhooks({ webhookHandlers: {} })
+);
 app.use("/api/webhooks", webhooksRouter);
 
 // ---- App Config Route for Frontend ----
