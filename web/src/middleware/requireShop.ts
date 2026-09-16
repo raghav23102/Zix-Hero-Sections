@@ -29,16 +29,22 @@ export async function requireShop(
     return;
   }
 
-  if (!shop.isActive) {
+  const sessionToken = res.locals["shopify"]?.session?.accessToken;
+
+  if (!shop.isActive || (sessionToken && shop.accessToken !== sessionToken)) {
     // If they reached here, they have a valid session (via requireAuth).
     // This happens if Shopify didn't clear the session during uninstallation,
-    // so we automatically re-activate the shop.
+    // so we automatically re-activate the shop and sync the token.
     await prisma.shop.update({
       where: { id: shop.id },
-      data: { isActive: true },
+      data: { 
+        isActive: true,
+        ...(sessionToken ? { accessToken: sessionToken } : {})
+      },
     });
     shop.isActive = true;
-    console.log(`[requireShop] Auto-reactivated shop ${shopDomain}`);
+    if (sessionToken) shop.accessToken = sessionToken;
+    console.log(`[requireShop] Auto-reactivated/synced shop ${shopDomain}`);
   }
 
   // Attach shop to request for downstream handlers
