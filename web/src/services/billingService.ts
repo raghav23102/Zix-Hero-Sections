@@ -2,7 +2,7 @@
 // Billing Service — Shopify Recurring Application Charges
 // ============================================================
 
-import { shopifyApi, ApiVersion, LATEST_API_VERSION } from "@shopify/shopify-api";
+import { shopifyApi, ApiVersion } from "@shopify/shopify-api";
 import { prisma } from "../db.js";
 import { Plan, PLAN_PRICES } from "../shared/types.js";
 import { handlePlanDowngrade, syncActiveSections } from "./usageService.js";
@@ -81,27 +81,40 @@ export async function createShopifySubscription(
     ],
   };
 
-  const response = await fetch(
-    `https://${shopDomain}/admin/api/${LATEST_API_VERSION}/graphql.json`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Shopify-Access-Token": accessToken,
-      },
-      body: JSON.stringify({ query, variables }),
+  let json: any;
+  try {
+    const response = await fetch(
+      `https://${shopDomain}/admin/api/2024-07/graphql.json`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Shopify-Access-Token": accessToken,
+        },
+        body: JSON.stringify({ query, variables }),
+      }
+    );
+    
+    if (!response.ok) {
+      console.error(`[Billing API] HTTP Error: ${response.status} ${response.statusText}`);
     }
-  );
+    
+    const text = await response.text();
+    try {
+      json = JSON.parse(text);
+    } catch (e) {
+      console.error(`[Billing API] Failed to parse JSON response. Body: ${text}`);
+      throw new Error(`Invalid JSON response from Shopify: ${text.substring(0, 100)}`);
+    }
 
-  const json = (await response.json()) as {
-    data?: {
-      appSubscriptionCreate?: {
-        confirmationUrl?: string;
-        appSubscription?: { id?: string };
-        userErrors?: Array<{ message: string }>;
-      };
-    };
-  };
+    if (json.errors) {
+      console.error(`[Billing API] GraphQL Errors:`, JSON.stringify(json.errors, null, 2));
+      throw new Error(`Shopify GraphQL Error: ${json.errors[0]?.message}`);
+    }
+  } catch (error) {
+    console.error("[Billing API] Network or Parsing Error:", error);
+    throw error;
+  }
 
   const result = json.data?.appSubscriptionCreate;
   if (!result?.confirmationUrl || !result?.appSubscription?.id) {
