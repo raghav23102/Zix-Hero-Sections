@@ -120,9 +120,32 @@ app.get("/api/diagnostic", async (req, res) => {
 app.get(shopify.config.auth.path, shopify.auth.begin());
 app.get(
   shopify.config.auth.callbackPath,
-  (req, res, next) => {
+  async (req, res, next) => {
     console.log(`[Auth Callback] Starting callback for ${req.query.shop}`);
-    next();
+    
+    // TEST DB CONNECTION BEFORE OAUTH
+    try {
+      console.log(`[Auth Callback] Pinging database...`);
+      // Use Promise.race to enforce a 3-second timeout for the DB ping
+      await Promise.race([
+        prisma.$queryRaw`SELECT 1`,
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Database connection timed out after 3 seconds.")), 3000))
+      ]);
+      console.log(`[Auth Callback] Database ping successful!`);
+      next();
+    } catch (err: any) {
+      console.error("[Auth Callback] FATAL: Database connection failed!", err);
+      // Fail explicitly right away
+      res.status(500).send(`
+        <html>
+          <body>
+            <h2>Database Connection Error</h2>
+            <p>The app could not connect to the database in Vercel. Please check your DATABASE_URL.</p>
+            <pre>${err.message}</pre>
+          </body>
+        </html>
+      `);
+    }
   },
   shopify.auth.callback(),
   async (req, res, next) => {
