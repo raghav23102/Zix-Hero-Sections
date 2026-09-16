@@ -53,6 +53,15 @@ const shopify = shopifyApp({
   sessionStorage: new PrismaSessionStorage(prisma),
 });
 
+// ---- MONKEY PATCH ----
+// Prevent the library from trying to register webhooks during the OAuth callback.
+// This completely bypasses the '403 Forbidden' GraphQL Client error!
+shopify.api.webhooks.register = async () => {
+  console.log("[Auth Callback] Skipped library webhook registration to prevent 403 error.");
+  return {};
+};
+// ----------------------
+
 const app = express();
 
 const logs: string[] = [];
