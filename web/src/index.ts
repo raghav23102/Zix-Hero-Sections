@@ -25,6 +25,7 @@ import { webhooksRouter } from "./routes/webhooks.js";
 import { shopRouter } from "./routes/shop.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { setupShop } from "./services/shopService.js";
+import { requireAuth } from "./middleware/requireAuth.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -164,12 +165,12 @@ app.get("/api/config", (req, res) => {
 });
 
 // ---- API Routes (require Shopify session) ----
-app.use("/api", shopify.validateAuthenticatedSession(), authRouter);
-app.use("/api/sections", shopify.validateAuthenticatedSession(), sectionsRouter);
-app.use("/api/templates", shopify.validateAuthenticatedSession(), templatesRouter);
-app.use("/api/billing", shopify.validateAuthenticatedSession(), billingRouter);
-app.use("/api/settings", shopify.validateAuthenticatedSession(), settingsRouter);
-app.use("/api/shop", shopify.validateAuthenticatedSession(), shopRouter);
+app.use("/api", requireAuth, authRouter);
+app.use("/api/sections", requireAuth, sectionsRouter);
+app.use("/api/templates", requireAuth, templatesRouter);
+app.use("/api/billing", requireAuth, billingRouter);
+app.use("/api/settings", requireAuth, settingsRouter);
+app.use("/api/shop", requireAuth, shopRouter);
 
 // Vercel's Edge Network serves them via vercel.json routing.
 if (process.env["NODE_ENV"] !== "production") {
