@@ -129,15 +129,11 @@ export async function createShopifySubscription(
     if (topLevelErrorMsg || mutationErrors) {
       const allErrors = (topLevelErrorMsg + " " + mutationErrors).toLowerCase();
       
-      if (allErrors.includes("non-expiring access tokens")) {
-        console.warn(`[Billing] Legacy non-expiring token detected. Forcing OAuth re-authentication.`);
-        throw new Error("SHOPIFY_AUTH_REQUIRED");
-      }
-      
       const isPublicDistributionBlock =
         allErrors.includes("public distribution") ||
         allErrors.includes("billing api") ||
         allErrors.includes("development app") ||
+        allErrors.includes("non-expiring access tokens") ||
         allErrors.includes("test");
 
       if (isPublicDistributionBlock) {

@@ -103,10 +103,10 @@ export function Billing() {
       let returnUrl = "";
       if (shopName) {
         // This ensures Shopify safely escapes the iframe and reinjects host/shop params upon return
-        returnUrl = `https://admin.shopify.com/store/${shopName}/apps/${apiKey}/templates?billing_confirmed=true`;
+        returnUrl = `https://admin.shopify.com/store/${shopName}/apps/${apiKey}/billing?confirmed=true`;
       } else {
         // Extreme fallback if shop is completely lost
-        returnUrl = `${window.location.origin}/templates?billing_confirmed=true`;
+        returnUrl = `${window.location.origin}/billing?confirmed=true`;
       }
       
       const response = await billingApi.subscribe(planId, returnUrl);
