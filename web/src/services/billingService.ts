@@ -22,7 +22,8 @@ const PLAN_NAMES: Record<Plan, string> = {
 export async function createShopifySubscription(
   shopDomain: string,
   plan: Plan,
-  returnUrl: string
+  returnUrl: string,
+  activeToken?: string
 ): Promise<CreateSubscriptionResult | null> {
   if (plan === "FREE") {
     // Cancel existing subscription for downgrade to free
@@ -37,7 +38,7 @@ export async function createShopifySubscription(
   if (!shop) throw new Error("Shop not found");
 
   // Use Shopify GraphQL Admin API to create recurring charge
-  const accessToken = shop.accessToken;
+  const accessToken = activeToken ?? shop.accessToken;
 
   const query = `
     mutation appSubscriptionCreate(

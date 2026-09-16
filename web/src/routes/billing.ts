@@ -124,7 +124,8 @@ billingRouter.post("/subscribe", async (req, res) => {
     const result = await createShopifySubscription(
       shop.shopDomain,
       plan as Plan,
-      confirmUrl
+      confirmUrl,
+      res.locals.shopify.session.accessToken
     );
 
     if (!result) {
