@@ -39,7 +39,7 @@ const shopify = shopifyApp({
     apiSecretKey: process.env["SHOPIFY_API_SECRET"] ?? "",
     scopes: process.env.SCOPES ? process.env.SCOPES.split(",") : ["write_themes", "read_themes"],
     hostName: SHOPIFY_APP_URL.replace(/https?:\/\//, "").replace(/\/$/, ""),
-    apiVersion: "2026-07" as any,
+    apiVersion: LATEST_API_VERSION,
     isEmbeddedApp: true,
   },
   useOnlineTokens: true,
@@ -120,35 +120,24 @@ app.get("/api/diagnostic", async (req, res) => {
 app.get(shopify.config.auth.path, shopify.auth.begin());
 app.get(
   shopify.config.auth.callbackPath,
-  async (req, res, next) => {
-    try {
-      console.log(`[Auth Callback] Starting callback for ${req.query.shop}`);
-      // Shopify's auth callback middleware
-      await new Promise<void>((resolve, reject) => {
-        shopify.auth.callback()(req, res, (err: any) => {
-          if (err) return reject(err);
-          resolve();
-        });
-      });
-      next();
-    } catch (err: any) {
-      console.error("[Auth Callback] Error in shopify.auth.callback:", err);
-      // Pass the error to the global error handler
-      next(err);
-    }
+  (req, res, next) => {
+    console.log(`[Auth Callback] Starting callback for ${req.query.shop}`);
+    next();
   },
+  shopify.auth.callback(),
   async (req, res, next) => {
     try {
       const session = res.locals.shopify.session;
       if (session) {
+        console.log(`[Auth Callback] Setting up shop in DB: ${session.shop}`);
         // Setup shop in our DB using the static import
         await setupShop(session);
-        console.log("[Auth Callback] Shop setup complete:", session.shop);
+        console.log(`[Auth Callback] Shop setup complete: ${session.shop}`);
       }
       next();
     } catch (err) {
       console.error("[Auth Callback] Error setting up shop in DB:", err);
-      next(err); // Changed to next(err) so it fails explicitly instead of continuing with broken state
+      next(err); // Fail explicitly
     }
   },
   shopify.redirectToShopifyOrAppRoot()
