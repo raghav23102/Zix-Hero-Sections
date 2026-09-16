@@ -119,27 +119,35 @@ billingRouter.post("/subscribe", async (req, res) => {
   }
   const confirmUrl = returnUrl ?? `${appUrl}/billing?confirmed=true`;
 
-  const result = await createShopifySubscription(
-    shop.shopDomain,
-    plan as Plan,
-    confirmUrl
-  );
+  try {
+    const result = await createShopifySubscription(
+      shop.shopDomain,
+      plan as Plan,
+      confirmUrl
+    );
 
-  if (!result) {
-    res.status(500).json({
-      success: false,
-      error: "Unable to create subscription. Please try again.",
+    if (!result) {
+      res.status(500).json({
+        success: false,
+        error: "Unable to create subscription. Please try again.",
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        confirmationUrl: result.confirmationUrl,
+        subscriptionId: result.subscriptionId,
+      },
     });
-    return;
+  } catch (error: any) {
+    console.error("[Billing Subscribe Error]", error);
+    res.status(400).json({
+      success: false,
+      error: error.message || "Failed to process subscription with Shopify",
+    });
   }
-
-  res.json({
-    success: true,
-    data: {
-      confirmationUrl: result.confirmationUrl,
-      subscriptionId: result.subscriptionId,
-    },
-  });
 });
 
 // POST /api/billing/cancel — cancel subscription (downgrade to free)
