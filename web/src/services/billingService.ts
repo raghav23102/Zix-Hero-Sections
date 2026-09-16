@@ -102,7 +102,7 @@ export async function createShopifySubscription(
     const text = await response.text();
     try {
       json = JSON.parse(text);
-    } catch (e) {
+    } catch (e: any) {
       console.error(`[Billing API] Failed to parse JSON response. Body: ${text}`);
       throw new Error(`Invalid JSON response from Shopify: ${text.substring(0, 100)}`);
     }
@@ -118,7 +118,7 @@ export async function createShopifySubscription(
 
   const result = json.data?.appSubscriptionCreate;
   if (!result?.confirmationUrl || !result?.appSubscription?.id) {
-    const errors = result?.userErrors?.map((e) => e.message).join(", ") ?? "Unknown error";
+    const errors = result?.userErrors?.map((e: any) => e.message).join(", ") ?? "Unknown error";
 
     // Shopify blocks Billing API for unpublished apps.
     // Fallback: immediately activate the plan in our DB so the app works.
