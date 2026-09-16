@@ -85,7 +85,7 @@ export async function createShopifySubscription(
   let topLevelErrorMsg = "";
   try {
     const response = await fetch(
-      `https://${shopDomain}/admin/api/2024-07/graphql.json`,
+      `https://${shopDomain}/admin/api/2023-10/graphql.json`,
       {
         method: "POST",
         headers: {
