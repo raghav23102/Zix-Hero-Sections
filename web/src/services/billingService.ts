@@ -2,7 +2,7 @@
 // Billing Service — Shopify Recurring Application Charges
 // ============================================================
 
-import { shopifyApi, ApiVersion } from "@shopify/shopify-api";
+import { shopifyApi, ApiVersion, LATEST_API_VERSION } from "@shopify/shopify-api";
 import { prisma } from "../db.js";
 import { Plan, PLAN_PRICES } from "../shared/types.js";
 import { handlePlanDowngrade, syncActiveSections } from "./usageService.js";
@@ -85,7 +85,7 @@ export async function createShopifySubscription(
   let topLevelErrorMsg = "";
   try {
     const response = await fetch(
-      `https://${shopDomain}/admin/api/2023-10/graphql.json`,
+      `https://${shopDomain}/admin/api/${LATEST_API_VERSION}/graphql.json`,
       {
         method: "POST",
         headers: {
@@ -129,38 +129,7 @@ export async function createShopifySubscription(
     if (topLevelErrorMsg || mutationErrors) {
       const allErrors = (topLevelErrorMsg + " " + mutationErrors).toLowerCase();
       
-      const isPublicDistributionBlock =
-        allErrors.includes("public distribution") ||
-        allErrors.includes("billing api") ||
-        allErrors.includes("development app") ||
-        allErrors.includes("non-expiring access tokens") ||
-        allErrors.includes("test");
 
-      if (isPublicDistributionBlock) {
-        console.warn(`[Billing] Shopify blocked Billing API. Activating plan directly: ${plan}`);
-        const mockId = `dev_mock_${Date.now()}`;
-        await prisma.subscription.upsert({
-          where: { shopId: shop.id },
-          update: {
-            plan,
-            status: "ACTIVE",
-            shopifySubscriptionId: mockId,
-            shopifyConfirmationUrl: null,
-            currentPeriodStart: new Date(),
-            currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-          },
-          create: {
-            shopId: shop.id,
-            plan,
-            status: "ACTIVE",
-            shopifySubscriptionId: mockId,
-            shopifyConfirmationUrl: null,
-            currentPeriodStart: new Date(),
-            currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-          },
-        });
-        return { confirmationUrl: returnUrl, subscriptionId: mockId };
-      }
 
       throw new Error(`Shopify GraphQL Error: ${topLevelErrorMsg || mutationErrors}`);
     }
