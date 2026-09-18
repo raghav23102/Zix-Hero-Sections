@@ -151,7 +151,7 @@ export function AllSections() {
       }}
       secondaryActions={[
         {
-          content: "Add to Theme",
+          content: "Theme Editor",
           icon: ExternalIcon,
           onAction: () => {
             if (themeEditorUrl) {
