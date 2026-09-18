@@ -15,7 +15,7 @@
     var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (prefersReducedMotion) return;
 
-    var elements = document.querySelectorAll('[data-zix-animate]');
+    var elements = document.querySelectorAll('[data-zix-animate]:not(.is-visible)');
     if (!elements.length) return;
 
     var observer = new IntersectionObserver(function (entries) {
@@ -29,6 +29,12 @@
 
     elements.forEach(function (el) {
       observer.observe(el);
+      // Fallback: if observer fails to fire in preview iframes, force visible after 1.5s
+      setTimeout(function() {
+        if (!el.classList.contains('is-visible')) {
+          el.classList.add('is-visible');
+        }
+      }, 1500);
     });
   }
 
