@@ -160,11 +160,15 @@ sectionsRouter.post("/", async (req, res) => {
 
   // Sync config to Shopify metafield so theme block can read it via section_id
   if (shop.accessToken) {
+    const metaConfig = { 
+      ...((configuration ?? {}) as Record<string, unknown>), 
+      templateId 
+    };
     void syncSectionMetafield(
       shop.shopDomain,
       shop.accessToken,
       section.id,
-      (configuration ?? {}) as Record<string, unknown>
+      metaConfig
     );
   }
 
@@ -219,11 +223,15 @@ sectionsRouter.put("/:id", async (req, res) => {
 
   // Sync updated config to Shopify metafield
   if (shop.accessToken && parsed.data.configuration) {
+    const metaConfig = { 
+      ...(parsed.data.configuration as Record<string, unknown>), 
+      templateId: existing.templateId 
+    };
     void syncSectionMetafield(
       shop.shopDomain,
       shop.accessToken,
       updated.id,
-      parsed.data.configuration as Record<string, unknown>
+      metaConfig
     );
   }
 

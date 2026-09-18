@@ -18,9 +18,17 @@
   Priority: metafield (written by app) → block settings (theme editor)
 {%- endcomment -%}
 {%- assign _meta = nil -%}
-{%- if block.settings.section_id != blank -%}
-  {%- assign _meta_key = 'section_' | append: block.settings.section_id -%}
-  {%- assign _meta = shop.metafields.zix_hero[_meta_key].value -%}
+{%- assign _clean_id = block.settings.section_id | strip -%}
+{%- if _clean_id != blank -%}
+  {%- assign _meta_key = 'section_' | append: _clean_id -%}
+  {%- assign _meta_obj = shop.metafields.zix_hero[_meta_key] -%}
+  {%- assign _meta = _meta_obj.value -%}
+  <!-- DEBUG:
+    Clean ID: {{ _clean_id }}
+    Meta Key: {{ _meta_key }}
+    Meta Exists: {% if _meta_obj != blank %}Yes{% else %}No{% endif %}
+    Meta Value Exists: {% if _meta != blank %}Yes{% else %}No{% endif %}
+  -->
 {%- endif -%}
 
 {%- if _meta -%}
