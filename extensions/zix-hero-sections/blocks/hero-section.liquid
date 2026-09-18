@@ -1,81 +1,179 @@
 {% comment %}
   Zix Hero Sections — Theme App Extension Block
-  
-  This block is added to any Shopify Online Store 2.0 theme through the Theme Editor.
-  Merchants can configure all settings directly in the Shopify Theme Editor.
-  
-  The block renders the hero section using Liquid + CSS + minimal JavaScript.
-  No external libraries. Lightweight. Performant. Accessible.
+
+  ■ SECTION ID LINKING
+  If block.settings.section_id is set, the block reads a Shopify shop
+  metafield written by the Zix Hero Sections app (namespace: zix_hero,
+  key: section_{id}) and uses those values instead of block settings.
+  Block settings always act as the fallback.
+
+  ■ TEMPLATE IDS
+  modern-split | fullscreen-image | video-background | product-showcase
+  fashion | minimal | gradient | image-cta | collection | sale
+  countdown | before-after | animated | editorial
 {% endcomment %}
 
+{%- comment -%}
+  ── VARIABLE RESOLUTION ────────────────────────────────────────────
+  Priority: metafield (written by app) → block settings (theme editor)
+{%- endcomment -%}
+{%- assign _meta = nil -%}
+{%- if block.settings.section_id != blank -%}
+  {%- assign _meta = shop.metafields.zix_hero['section_' | append: block.settings.section_id].value -%}
+{%- endif -%}
+
+{%- if _meta -%}
+  {%- assign _tid           = _meta.templateId              | default: block.settings.template_id -%}
+  {%- assign _heading       = _meta.heading                 | default: block.settings.heading -%}
+  {%- assign _subheading    = _meta.subheading              | default: block.settings.subheading -%}
+  {%- assign _description   = _meta.description             | default: block.settings.description -%}
+  {%- assign _badge         = _meta.badgeText               | default: block.settings.badge_text -%}
+  {%- assign _pri_txt       = _meta.primaryButtonText       | default: block.settings.primary_button_text -%}
+  {%- assign _pri_url       = _meta.primaryButtonUrl        | default: block.settings.primary_button_url -%}
+  {%- assign _sec_txt       = _meta.secondaryButtonText     | default: block.settings.secondary_button_text -%}
+  {%- assign _sec_url       = _meta.secondaryButtonUrl      | default: block.settings.secondary_button_url -%}
+  {%- assign _bg            = _meta.backgroundColor        | default: block.settings.background_color -%}
+  {%- assign _ov_color      = _meta.overlayColor            | default: block.settings.overlay_color -%}
+  {%- assign _h_color       = _meta.headingColor            | default: block.settings.heading_color -%}
+  {%- assign _t_color       = _meta.textColor               | default: block.settings.text_color -%}
+  {%- assign _btn_color     = _meta.primaryButtonColor      | default: block.settings.button_color -%}
+  {%- assign _btn_txt       = _meta.primaryButtonTextColor  | default: block.settings.button_text_color -%}
+  {%- assign _btn_r         = _meta.primaryButtonBorderRadius | default: block.settings.button_border_radius -%}
+  {%- assign _height        = _meta.sectionHeight           | default: block.settings.section_height -%}
+  {%- assign _width         = _meta.contentWidth            | default: block.settings.content_width -%}
+  {%- assign _pt            = _meta.desktopPaddingTop       | default: block.settings.desktop_padding_top -%}
+  {%- assign _pb            = _meta.desktopPaddingBottom    | default: block.settings.desktop_padding_bottom -%}
+  {%- assign _align         = _meta.textAlignment           | default: block.settings.text_alignment -%}
+  {%- assign _g_start       = _meta.backgroundGradientStart | default: block.settings.gradient_start -%}
+  {%- assign _g_end         = _meta.backgroundGradientEnd   | default: block.settings.gradient_end -%}
+  {%- assign _anim          = _meta.animationType           | default: block.settings.animation_type -%}
+  {%- assign _discount      = _meta.discountText            | default: block.settings.discount_text -%}
+  {%- assign _cd_date       = _meta.countdownEndDate        | default: block.settings.countdown_end_date -%}
+  {%- assign _cd_msg        = _meta.countdownCompletionMessage | default: block.settings.countdown_completion_message -%}
+  {%- assign _img_pos       = _meta.imagePosition           | default: block.settings.image_position -%}
+  {%- comment -%} overlayOpacity: app stores 0–1, block uses 0–100 {%- endcomment -%}
+  {%- if _meta.overlayOpacity -%}
+    {%- assign _ov_opacity  = _meta.overlayOpacity | times: 100 | round -%}
+  {%- else -%}
+    {%- assign _ov_opacity  = block.settings.overlay_opacity -%}
+  {%- endif -%}
+  {%- comment -%} headingSize: app uses sm/md/lg/xl/2xl/3xl → rem values {%- endcomment -%}
+  {%- case _meta.headingSize -%}
+    {%- when 'sm'  -%}{%- assign _h_size = '1.5rem'   -%}
+    {%- when 'md'  -%}{%- assign _h_size = '2rem'     -%}
+    {%- when 'lg'  -%}{%- assign _h_size = '2.625rem' -%}
+    {%- when 'xl'  -%}{%- assign _h_size = '3.25rem'  -%}
+    {%- when '2xl' -%}{%- assign _h_size = '4rem'     -%}
+    {%- when '3xl' -%}{%- assign _h_size = '5rem'     -%}
+    {%- else       -%}{%- assign _h_size = block.settings.heading_size -%}
+  {%- endcase -%}
+{%- else -%}
+  {%- assign _tid       = block.settings.template_id -%}
+  {%- assign _heading   = block.settings.heading -%}
+  {%- assign _subheading = block.settings.subheading -%}
+  {%- assign _description = block.settings.description -%}
+  {%- assign _badge     = block.settings.badge_text -%}
+  {%- assign _pri_txt   = block.settings.primary_button_text -%}
+  {%- assign _pri_url   = block.settings.primary_button_url -%}
+  {%- assign _sec_txt   = block.settings.secondary_button_text -%}
+  {%- assign _sec_url   = block.settings.secondary_button_url -%}
+  {%- assign _bg        = block.settings.background_color -%}
+  {%- assign _ov_color  = block.settings.overlay_color -%}
+  {%- assign _ov_opacity = block.settings.overlay_opacity -%}
+  {%- assign _h_color   = block.settings.heading_color -%}
+  {%- assign _t_color   = block.settings.text_color -%}
+  {%- assign _btn_color = block.settings.button_color -%}
+  {%- assign _btn_txt   = block.settings.button_text_color -%}
+  {%- assign _btn_r     = block.settings.button_border_radius -%}
+  {%- assign _height    = block.settings.section_height -%}
+  {%- assign _width     = block.settings.content_width -%}
+  {%- assign _pt        = block.settings.desktop_padding_top -%}
+  {%- assign _pb        = block.settings.desktop_padding_bottom -%}
+  {%- assign _h_size    = block.settings.heading_size -%}
+  {%- assign _align     = block.settings.text_alignment -%}
+  {%- assign _g_start   = block.settings.gradient_start -%}
+  {%- assign _g_end     = block.settings.gradient_end -%}
+  {%- assign _anim      = block.settings.animation_type -%}
+  {%- assign _discount  = block.settings.discount_text -%}
+  {%- assign _cd_date   = block.settings.countdown_end_date -%}
+  {%- assign _cd_msg    = block.settings.countdown_completion_message -%}
+  {%- assign _img_pos   = block.settings.image_position -%}
+{%- endif -%}
+
 <div
-  class="zix-hero zix-hero--{{ block.settings.template_id }}"
+  class="zix-hero zix-hero--{{ _tid }}"
   id="zix-hero-{{ block.id }}"
   style="
-    --zix-bg: {{ block.settings.background_color }};
-    --zix-overlay-color: {{ block.settings.overlay_color }};
-    --zix-overlay-opacity: {{ block.settings.overlay_opacity | divided_by: 100.0 }};
-    --zix-heading-color: {{ block.settings.heading_color }};
-    --zix-text-color: {{ block.settings.text_color }};
-    --zix-btn-color: {{ block.settings.button_color }};
-    --zix-btn-text: {{ block.settings.button_text_color }};
-    --zix-btn-radius: {{ block.settings.button_border_radius }}px;
-    --zix-height: {{ block.settings.section_height }};
-    --zix-pt: {{ block.settings.desktop_padding_top }}px;
-    --zix-pb: {{ block.settings.desktop_padding_bottom }}px;
-    --zix-heading-size: {{ block.settings.heading_size }};
-    --zix-text-align: {{ block.settings.text_alignment }};
-    --zix-gradient-start: {{ block.settings.gradient_start }};
-    --zix-gradient-end: {{ block.settings.gradient_end }};
+    --zix-bg: {{ _bg }};
+    --zix-overlay-color: {{ _ov_color }};
+    --zix-overlay-opacity: {{ _ov_opacity | divided_by: 100.0 }};
+    --zix-heading-color: {{ _h_color }};
+    --zix-text-color: {{ _t_color }};
+    --zix-btn-color: {{ _btn_color }};
+    --zix-btn-text: {{ _btn_txt }};
+    --zix-btn-radius: {{ _btn_r }}px;
+    --zix-height: {{ _height }};
+    --zix-pt: {{ _pt }}px;
+    --zix-pb: {{ _pb }}px;
+    --zix-heading-size: {{ _h_size }};
+    --zix-text-align: {{ _align }};
+    --zix-gradient-start: {{ _g_start }};
+    --zix-gradient-end: {{ _g_end }};
   "
   {{ block.shopify_attributes }}
 >
-  {% comment %} Background image / video {% endcomment %}
-  {% if block.settings.template_id == 'video-background' and block.settings.video_url != blank %}
+
+  {%- comment -%} ── BACKGROUND ──────────────────────────────────────── {%- endcomment -%}
+  {%- if _tid == 'video-background' and block.settings.video_url != blank -%}
     <div class="zix-hero__video-wrap">
-      <video
-        class="zix-hero__video"
-        autoplay
-        muted
-        loop
-        playsinline
-        aria-hidden="true"
-      >
+      <video class="zix-hero__video" autoplay muted loop playsinline aria-hidden="true">
         <source src="{{ block.settings.video_url }}" type="video/mp4">
-        {% if block.settings.image != blank %}
+        {%- if block.settings.image != blank -%}
           {{ block.settings.image | image_url: width: 1920 | image_tag: class: 'zix-hero__video-fallback', loading: 'lazy', alt: block.settings.image.alt }}
-        {% endif %}
+        {%- endif -%}
       </video>
     </div>
-  {% elsif block.settings.image != blank and block.settings.template_id != 'modern-split' and block.settings.template_id != 'product-showcase' and block.settings.template_id != 'minimal' and block.settings.template_id != 'gradient' %}
+  {%- elsif block.settings.image != blank
+      and _tid != 'modern-split'
+      and _tid != 'product-showcase'
+      and _tid != 'image-cta'
+      and _tid != 'minimal'
+      and _tid != 'gradient' -%}
     <div
       class="zix-hero__bg-image"
       style="background-image: url('{{ block.settings.image | image_url: width: 1920 }}');"
       role="img"
       aria-label="{{ block.settings.image.alt | escape }}"
     ></div>
-  {% elsif block.settings.use_gradient %}
-    {%- comment -%}Gradient is applied via CSS variable{%- endcomment -%}
-  {% endif %}
+  {%- endif -%}
 
-  {% comment %} Overlay {% endcomment %}
-  {% if block.settings.overlay_opacity > 0 %}
+  {%- comment -%} ── OVERLAY ─────────────────────────────────────────── {%- endcomment -%}
+  {%- if _ov_opacity > 0 -%}
     <div class="zix-hero__overlay" aria-hidden="true"></div>
-  {% endif %}
+  {%- endif -%}
 
-  {% comment %} Main content {% endcomment %}
-  <div class="zix-hero__inner zix-hero__inner--{{ block.settings.content_width }}">
+  {%- comment -%} ── MAIN CONTENT ────────────────────────────────────── {%- endcomment -%}
+  <div class="zix-hero__inner zix-hero__inner--{{ _width }}">
 
-    {%- comment -%} SPLIT LAYOUT (modern-split, product-showcase, editorial) {%- endcomment -%}
-    {% if block.settings.template_id == 'modern-split' or block.settings.template_id == 'product-showcase' or block.settings.template_id == 'editorial' %}
-      <div class="zix-hero__split {% if block.settings.image_position == 'left' %}zix-hero__split--reverse{% endif %}">
-        <div class="zix-hero__split-content zix-animate {{ block.settings.animation_type }}" data-zix-animate>
-          {%- render 'zix-hero-content', block: block -%}
-          {% if block.settings.template_id == 'product-showcase' %}
-            {%- render 'zix-hero-product', block: block -%}
-          {% endif %}
+    {%- comment -%} SPLIT LAYOUTS: modern-split, product-showcase, image-cta, editorial {%- endcomment -%}
+    {%- if _tid == 'modern-split' or _tid == 'product-showcase' or _tid == 'image-cta' or _tid == 'editorial' -%}
+      <div class="zix-hero__split {% if _img_pos == 'left' %}zix-hero__split--reverse{% endif %}">
+        <div class="zix-hero__split-content zix-animate {{ _anim }}" data-zix-animate>
+          {%- render 'zix-hero-content',
+            badge_text: _badge,
+            subheading: _subheading,
+            heading: _heading,
+            description: _description,
+            primary_button_text: _pri_txt,
+            primary_button_url: _pri_url,
+            secondary_button_text: _sec_txt,
+            secondary_button_url: _sec_url
+          -%}
+          {%- if _tid == 'product-showcase' and block.settings.product_price != blank -%}
+            <p class="zix-hero__product-price">{{ block.settings.product_price }}</p>
+          {%- endif -%}
         </div>
-        {% if block.settings.image != blank %}
+        {%- if block.settings.image != blank -%}
           <div class="zix-hero__split-image">
             {{ block.settings.image | image_url: width: 900 | image_tag:
               loading: 'lazy',
@@ -85,46 +183,56 @@
               sizes: '(min-width: 768px) 50vw, 100vw'
             }}
           </div>
-        {% endif %}
+        {%- endif -%}
       </div>
 
-    {%- comment -%} BEFORE/AFTER LAYOUT {%- endcomment -%}
-    {% elsif block.settings.template_id == 'before-after' %}
-      <div class="zix-hero__center zix-animate {{ block.settings.animation_type }}" data-zix-animate>
-        {%- render 'zix-hero-content', block: block -%}
+    {%- comment -%} BEFORE/AFTER {%- endcomment -%}
+    {%- elsif _tid == 'before-after' -%}
+      <div class="zix-hero__center zix-animate {{ _anim }}" data-zix-animate>
+        {%- render 'zix-hero-content',
+          badge_text: _badge,
+          subheading: _subheading,
+          heading: _heading,
+          description: _description,
+          primary_button_text: _pri_txt,
+          primary_button_url: _pri_url,
+          secondary_button_text: _sec_txt,
+          secondary_button_url: _sec_url
+        -%}
       </div>
       <div class="zix-before-after" id="zix-ba-{{ block.id }}" aria-label="Before and after comparison">
-        {% if block.settings.after_image != blank %}
-          {{ block.settings.after_image | image_url: width: 900 | image_tag:
-            class: 'zix-ba__after',
-            loading: 'lazy',
-            alt: block.settings.after_image.alt | default: 'After'
-          }}
-        {% else %}
+        {%- if block.settings.after_image != blank -%}
+          {{ block.settings.after_image | image_url: width: 900 | image_tag: class: 'zix-ba__after', loading: 'lazy', alt: block.settings.after_image.alt | default: 'After' }}
+        {%- else -%}
           <div class="zix-ba__after zix-ba__placeholder">After</div>
-        {% endif %}
+        {%- endif -%}
         <div class="zix-ba__before-wrap" style="width: 50%;">
-          {% if block.settings.before_image != blank %}
-            {{ block.settings.before_image | image_url: width: 900 | image_tag:
-              class: 'zix-ba__before',
-              loading: 'lazy',
-              alt: block.settings.before_image.alt | default: 'Before'
-            }}
-          {% else %}
+          {%- if block.settings.before_image != blank -%}
+            {{ block.settings.before_image | image_url: width: 900 | image_tag: class: 'zix-ba__before', loading: 'lazy', alt: block.settings.before_image.alt | default: 'Before' }}
+          {%- else -%}
             <div class="zix-ba__before zix-ba__placeholder">Before</div>
-          {% endif %}
+          {%- endif -%}
         </div>
         <button class="zix-ba__handle" aria-label="{{ 'sections.zix.before_after_drag' | t: default: 'Drag to compare before and after' }}">
           <span class="zix-ba__handle-icon" aria-hidden="true">↔</span>
         </button>
       </div>
 
-    {%- comment -%} COUNTDOWN LAYOUT {%- endcomment -%}
-    {% elsif block.settings.template_id == 'countdown' %}
-      <div class="zix-hero__center zix-animate {{ block.settings.animation_type }}" data-zix-animate>
-        {%- render 'zix-hero-content', block: block -%}
-        {% if block.settings.countdown_end_date != blank %}
-          <div class="zix-countdown" data-zix-countdown="{{ block.settings.countdown_end_date }}" data-zix-completion="{{ block.settings.countdown_completion_message | escape }}">
+    {%- comment -%} COUNTDOWN {%- endcomment -%}
+    {%- elsif _tid == 'countdown' -%}
+      <div class="zix-hero__center zix-animate {{ _anim }}" data-zix-animate>
+        {%- render 'zix-hero-content',
+          badge_text: _badge,
+          subheading: _subheading,
+          heading: _heading,
+          description: _description,
+          primary_button_text: _pri_txt,
+          primary_button_url: _pri_url,
+          secondary_button_text: _sec_txt,
+          secondary_button_url: _sec_url
+        -%}
+        {%- if _cd_date != blank -%}
+          <div class="zix-countdown" data-zix-countdown="{{ _cd_date }}" data-zix-completion="{{ _cd_msg | escape }}">
             <div class="zix-countdown__unit">
               <span class="zix-countdown__value" data-zix-days>00</span>
               <span class="zix-countdown__label">{{ 'sections.zix.days' | t: default: 'Days' }}</span>
@@ -145,22 +253,32 @@
               <span class="zix-countdown__label">{{ 'sections.zix.seconds' | t: default: 'Seconds' }}</span>
             </div>
           </div>
-        {% endif %}
+        {%- endif -%}
       </div>
 
-    {%- comment -%} CENTERED / DEFAULT LAYOUTS {%- endcomment -%}
-    {% else %}
+    {%- comment -%} CENTERED / DEFAULT: fashion, minimal, gradient, collection, sale, animated, fullscreen-image, video-background {%- endcomment -%}
+    {%- else -%}
       <div class="
         zix-hero__center
-        {% if block.settings.template_id == 'fashion' or block.settings.template_id == 'editorial' %}zix-hero__center--bottom{% endif %}
-        zix-animate {{ block.settings.animation_type }}
+        {%- if _tid == 'fashion' %} zix-hero__center--bottom{%- endif -%}
+        {%- if _tid == 'animated' %} zix-hero__center--animated{%- endif -%}
+        zix-animate {{ _anim }}
       " data-zix-animate>
-        {%- render 'zix-hero-content', block: block -%}
-        {% if block.settings.template_id == 'sale' and block.settings.discount_text != blank %}
-          <p class="zix-hero__discount">{{ block.settings.discount_text }}</p>
-        {% endif %}
+        {%- render 'zix-hero-content',
+          badge_text: _badge,
+          subheading: _subheading,
+          heading: _heading,
+          description: _description,
+          primary_button_text: _pri_txt,
+          primary_button_url: _pri_url,
+          secondary_button_text: _sec_txt,
+          secondary_button_url: _sec_url
+        -%}
+        {%- if _tid == 'sale' and _discount != blank -%}
+          <p class="zix-hero__discount">{{ _discount }}</p>
+        {%- endif -%}
       </div>
-    {% endif %}
+    {%- endif -%}
 
   </div>{%- comment -%} /.zix-hero__inner {%- endcomment -%}
 </div>
@@ -173,25 +291,32 @@
   "javascript": "zix-hero.js",
   "settings": [
     {
+      "type": "text",
+      "id": "section_id",
+      "label": "Zix Section ID (optional)",
+      "placeholder": "e.g. cmabcd1234efgh",
+      "info": "Paste the Section ID from the Zix Hero Sections app to auto-load your saved design. Updates in the app sync here automatically."
+    },
+    {
       "type": "select",
       "id": "template_id",
       "label": "Hero Template",
       "default": "modern-split",
       "options": [
-        { "value": "modern-split", "label": "Modern Split" },
-        { "value": "fullscreen-image", "label": "Full Screen Image" },
-        { "value": "video-background", "label": "Video Background" },
-        { "value": "product-showcase", "label": "Product Showcase" },
-        { "value": "fashion", "label": "Fashion" },
-        { "value": "minimal", "label": "Minimal" },
-        { "value": "gradient", "label": "Gradient Modern" },
-        { "value": "image-cta", "label": "Image + CTA" },
-        { "value": "collection", "label": "Collection" },
-        { "value": "sale", "label": "Sale Promotion" },
-        { "value": "countdown", "label": "Countdown" },
-        { "value": "before-after", "label": "Before & After" },
-        { "value": "animated", "label": "Animated" },
-        { "value": "editorial", "label": "Premium Editorial" }
+        { "value": "modern-split",      "label": "Modern Split" },
+        { "value": "fullscreen-image",  "label": "Full Screen Image" },
+        { "value": "video-background",  "label": "Video Background" },
+        { "value": "product-showcase",  "label": "Product Showcase" },
+        { "value": "fashion",           "label": "Fashion" },
+        { "value": "minimal",           "label": "Minimal" },
+        { "value": "gradient",          "label": "Gradient Modern" },
+        { "value": "image-cta",         "label": "Image + CTA" },
+        { "value": "collection",        "label": "Collection" },
+        { "value": "sale",              "label": "Sale Promotion" },
+        { "value": "countdown",         "label": "Countdown" },
+        { "value": "before-after",      "label": "Before & After" },
+        { "value": "animated",          "label": "Animated" },
+        { "value": "editorial",         "label": "Premium Editorial" }
       ]
     },
     {
@@ -249,7 +374,7 @@
       "label": "Image Position",
       "default": "right",
       "options": [
-        { "value": "left", "label": "Left" },
+        { "value": "left",  "label": "Left" },
         { "value": "right", "label": "Right" }
       ]
     },
@@ -267,6 +392,12 @@
       "type": "image_picker",
       "id": "after_image",
       "label": "After Image (Before/After template)"
+    },
+    {
+      "type": "text",
+      "id": "product_price",
+      "label": "Product Price (Product Showcase template)",
+      "placeholder": "$49.99"
     },
     {
       "type": "color",
@@ -326,12 +457,12 @@
       "label": "Heading Size",
       "default": "3.25rem",
       "options": [
-        { "value": "1.5rem", "label": "Small" },
-        { "value": "2rem", "label": "Medium" },
+        { "value": "1.5rem",   "label": "Small" },
+        { "value": "2rem",     "label": "Medium" },
         { "value": "2.625rem", "label": "Large" },
-        { "value": "3.25rem", "label": "XL" },
-        { "value": "4rem", "label": "2XL" },
-        { "value": "5rem", "label": "3XL" }
+        { "value": "3.25rem",  "label": "XL" },
+        { "value": "4rem",     "label": "2XL" },
+        { "value": "5rem",     "label": "3XL" }
       ]
     },
     {
@@ -340,9 +471,9 @@
       "label": "Text Alignment",
       "default": "center",
       "options": [
-        { "value": "left", "label": "Left" },
+        { "value": "left",   "label": "Left" },
         { "value": "center", "label": "Center" },
-        { "value": "right", "label": "Right" }
+        { "value": "right",  "label": "Right" }
       ]
     },
     {
@@ -367,8 +498,8 @@
       "options": [
         { "value": "narrow", "label": "Narrow" },
         { "value": "medium", "label": "Medium" },
-        { "value": "wide", "label": "Wide" },
-        { "value": "full", "label": "Full" }
+        { "value": "wide",   "label": "Wide" },
+        { "value": "full",   "label": "Full" }
       ]
     },
     {
@@ -425,16 +556,16 @@
       "label": "Animation Type",
       "default": "fade",
       "options": [
-        { "value": "", "label": "None" },
-        { "value": "fade", "label": "Fade In" },
-        { "value": "slide-up", "label": "Slide Up" },
+        { "value": "",           "label": "None" },
+        { "value": "fade",       "label": "Fade In" },
+        { "value": "slide-up",   "label": "Slide Up" },
         { "value": "slide-left", "label": "Slide Left" }
       ]
     },
     {
       "type": "text",
       "id": "discount_text",
-      "label": "Discount Text",
+      "label": "Discount Text (Sale template)",
       "placeholder": "Use code: SAVE20"
     },
     {
@@ -452,4 +583,3 @@
   ]
 }
 {% endschema %}
-

@@ -10,6 +10,7 @@ import { requireShop } from "../middleware/requireShop.js";
 import { canCreateSection, syncActiveSections } from "../services/usageService.js";
 import { isTemplateAccessible } from "../shared/templates.js";
 import { SectionStatus } from "../shared/types.js";
+import { syncSectionMetafield, deleteSectionMetafield } from "../services/metafieldService.js";
 
 export const sectionsRouter = Router();
 sectionsRouter.use(requireShop);
@@ -125,6 +126,16 @@ sectionsRouter.post("/", async (req, res) => {
 
   await syncActiveSections(shop.id);
 
+  // Sync config to Shopify metafield so theme block can read it via section_id
+  if (shop.accessToken) {
+    void syncSectionMetafield(
+      shop.shopDomain,
+      shop.accessToken,
+      section.id,
+      (configuration ?? {}) as Record<string, unknown>
+    );
+  }
+
   res.status(201).json({ success: true, data: section });
 });
 
@@ -173,6 +184,17 @@ sectionsRouter.put("/:id", async (req, res) => {
   });
 
   await syncActiveSections(shop.id);
+
+  // Sync updated config to Shopify metafield
+  if (shop.accessToken && parsed.data.configuration) {
+    void syncSectionMetafield(
+      shop.shopDomain,
+      shop.accessToken,
+      updated.id,
+      parsed.data.configuration as Record<string, unknown>
+    );
+  }
+
   res.json({ success: true, data: updated });
 });
 
@@ -230,6 +252,11 @@ sectionsRouter.delete("/:id", async (req, res) => {
 
   await prisma.heroSection.delete({ where: { id: req.params["id"] } });
   await syncActiveSections(shop.id);
+
+  // Remove metafield when section is deleted
+  if (shop.accessToken) {
+    void deleteSectionMetafield(shop.shopDomain, shop.accessToken, req.params["id"]!);
+  }
 
   res.json({ success: true, message: "Hero section deleted successfully." });
 });

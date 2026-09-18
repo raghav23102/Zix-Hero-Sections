@@ -686,22 +686,38 @@ export function EditorPage() {
 
           {/* Theme Editor instruction */}
           <Box paddingBlockStart="400">
-            <Banner tone="info">
-              <BlockStack gap="300">
-                <Text as="p" fontWeight="semibold">Add to your Shopify theme</Text>
-                <BlockStack gap="100">
-                  <Text as="p" variant="bodySm" fontWeight="semibold">Option 1 — Add as a standalone section (recommended)</Text>
-                  <Text as="p" variant="bodySm">
-                    Go to <strong>Online Store → Themes → Customize</strong>. In the left panel, scroll to the bottom and click{" "}
-                    <strong>Add section</strong>, then choose <strong>Apps → Zix Hero Sections</strong>.
-                  </Text>
-                </BlockStack>
-                <BlockStack gap="100">
-                  <Text as="p" variant="bodySm" fontWeight="semibold">Option 2 — Add as a block inside an existing section</Text>
-                  <Text as="p" variant="bodySm">
-                    Open any theme section that supports app blocks, click <strong>Add block</strong> at the bottom of that section's settings, then choose{" "}
-                    <strong>Apps → Zix Hero Section</strong>.
-                  </Text>
+            <Banner tone="info" title="Add to your Shopify theme">
+              <BlockStack gap="400">
+                <InlineStack align="space-between" blockAlign="center">
+                  <BlockStack gap="100">
+                    <Text as="p" variant="bodyMd"><strong>Your Section ID:</strong></Text>
+                    <div style={{ background: "#f4f6f8", padding: "8px 12px", borderRadius: "6px", fontFamily: "monospace", border: "1px solid #dfe3e8" }}>
+                      {section.id}
+                    </div>
+                  </BlockStack>
+                  <Button onClick={() => {
+                    void navigator.clipboard.writeText(section.id);
+                    setToast("Section ID copied to clipboard!");
+                  }}>
+                    Copy ID
+                  </Button>
+                </InlineStack>
+
+                <Divider />
+
+                <BlockStack gap="300">
+                  <BlockStack gap="100">
+                    <Text as="p" variant="bodySm" fontWeight="semibold">Step 1 — Add the section</Text>
+                    <Text as="p" variant="bodySm">
+                      Go to <strong>Online Store → Themes → Customize</strong>. In the left panel, click <strong>Add section</strong> and choose <strong>Apps → Zix Hero Section</strong>.
+                    </Text>
+                  </BlockStack>
+                  <BlockStack gap="100">
+                    <Text as="p" variant="bodySm" fontWeight="semibold">Step 2 — Paste your ID</Text>
+                    <Text as="p" variant="bodySm">
+                      In the section settings panel, paste your <strong>Section ID</strong>. Your saved design will instantly load and sync automatically!
+                    </Text>
+                  </BlockStack>
                 </BlockStack>
               </BlockStack>
             </Banner>

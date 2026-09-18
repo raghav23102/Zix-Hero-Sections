@@ -431,15 +431,134 @@
   .zix-animate { opacity: 1 !important; animation: none !important; }
 }
 
-/* Floating animation for animated template */
-@media (prefers-reduced-motion: no-preference) {
-  .zix-hero--animated .zix-float {
-    animation: zix-float 5s ease-in-out infinite;
   }
-  @keyframes zix-float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-14px); }
-  }
+}
+
+/* ============================================================
+   TEMPLATE DESIGNS (Visual Identity)
+   ============================================================ */
+
+/* 1. Modern Split & Image + CTA */
+.zix-hero--modern-split .zix-hero__split,
+.zix-hero--image-cta .zix-hero__split {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+  backdrop-filter: blur(10px);
+}
+
+/* 2. Full Screen Image */
+.zix-hero--fullscreen-image .zix-hero__inner {
+  align-items: center;
+  text-align: center;
+}
+.zix-hero--fullscreen-image .zix-hero__heading {
+  text-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  font-size: calc(var(--zix-heading-size) * 1.2);
+}
+
+/* 3. Video Background */
+.zix-hero--video-background .zix-hero__heading {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 20px rgba(0,0,0,0.8);
+}
+
+/* 4. Product Showcase */
+.zix-hero--product-showcase .zix-hero__product-price {
+  display: inline-block;
+  background: var(--zix-btn-color, #000);
+  color: var(--zix-btn-text, #fff);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 1.5rem;
+  margin-bottom: 24px;
+}
+
+/* 5. Fashion */
+.zix-hero--fashion .zix-hero__heading {
+  font-family: "Playfair Display", serif;
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: 0.02em;
+}
+.zix-hero--fashion .zix-hero__subheading {
+  letter-spacing: 0.2em;
+  font-weight: 400;
+}
+
+/* 6. Minimal */
+.zix-hero--minimal .zix-hero__heading {
+  font-weight: 300;
+  letter-spacing: -0.02em;
+}
+.zix-hero--minimal .zix-hero__description {
+  opacity: 0.6;
+}
+.zix-hero--minimal .zix-btn--primary {
+  border-radius: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* 7. Gradient Modern */
+.zix-hero--gradient .zix-hero__inner {
+  z-index: 3;
+}
+.zix-hero--gradient .zix-hero__heading {
+  text-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+
+/* 8. Collection */
+.zix-hero--collection .zix-hero__badge {
+  background: transparent;
+  border: 1px solid var(--zix-heading-color);
+  color: var(--zix-heading-color);
+}
+
+/* 9. Sale Promotion */
+.zix-hero--sale .zix-hero__heading {
+  color: #ff3366; /* Accent color fallback */
+  text-transform: uppercase;
+  transform: skewX(-5deg);
+}
+.zix-hero--sale .zix-hero__discount {
+  display: inline-block;
+  border: 2px dashed rgba(255, 255, 255, 0.4);
+  padding: 8px 24px;
+  font-size: 1.25rem;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* 10. Countdown */
+.zix-hero--countdown .zix-countdown__value {
+  background: var(--zix-btn-color, #333);
+  color: var(--zix-btn-text, #fff);
+  box-shadow: inset 0 -4px 0 rgba(0,0,0,0.2);
+}
+
+/* 11. Premium Editorial */
+.zix-hero--editorial .zix-hero__heading {
+  font-family: "Georgia", serif;
+  border-left: 4px solid var(--zix-btn-color);
+  padding-left: 24px;
+  text-align: left;
+}
+.zix-hero--editorial .zix-hero__description {
+  text-align: left;
+  font-size: 1.125rem;
+}
+
+/* 12. Animated */
+.zix-hero--animated .zix-hero__heading {
+  animation: zix-float 6s ease-in-out infinite;
+}
+.zix-hero--animated .zix-hero__img {
+  animation: zix-float 5s ease-in-out infinite reverse;
 }
 
 /* ============================================================
