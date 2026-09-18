@@ -164,6 +164,9 @@ app.get("/api/config", (req, res) => {
 });
 
 // ---- API Routes (require Shopify session) ----
+import { publicSectionsRouter } from "./routes/sections.js";
+app.use("/api/public/sections", publicSectionsRouter);
+
 app.use("/api", shopify.validateAuthenticatedSession(), authRouter);
 app.use("/api/sections", shopify.validateAuthenticatedSession(), sectionsRouter);
 app.use("/api/templates", shopify.validateAuthenticatedSession(), templatesRouter);

@@ -11,8 +11,40 @@ import { canCreateSection, syncActiveSections } from "../services/usageService.j
 import { isTemplateAccessible } from "../shared/templates.js";
 import { SectionStatus } from "../shared/types.js";
 import { syncSectionMetafield, deleteSectionMetafield } from "../services/metafieldService.js";
+import cors from "cors";
+
+export const publicSectionsRouter = Router();
+
+// ============================================================
+// STOREFRONT PING ENDPOINT (Public)
+// ============================================================
+// This endpoint is called from the storefront (no auth required).
+// We use CORS so any shop can hit this.
+publicSectionsRouter.post("/track-ping", cors(), async (req, res) => {
+  const { section_id } = req.body;
+  if (!section_id || typeof section_id !== "string") {
+    res.status(400).json({ success: false });
+    return;
+  }
+
+  try {
+    await prisma.heroSection.update({
+      where: { id: section_id },
+      data: {
+        isPublished: true,
+        lastPingedAt: new Date(),
+      },
+    });
+    res.json({ success: true });
+  } catch (error) {
+    // Ignore errors (e.g., section not found) to not block the storefront
+    res.json({ success: false });
+  }
+});
 
 export const sectionsRouter = Router();
+
+// Protect all subsequent routes with requireShop
 sectionsRouter.use(requireShop);
 
 // Zod schema for hero section config

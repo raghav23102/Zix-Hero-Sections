@@ -87,6 +87,7 @@ model HeroSection {
   configuration Json          // Flexible JSON config - stores all template settings
   status        SectionStatus @default(ACTIVE)
   isPublished   Boolean       @default(false)
+  lastPingedAt  DateTime?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

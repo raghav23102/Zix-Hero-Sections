@@ -584,3 +584,15 @@
   ]
 }
 {% endschema %}
+
+{%- if block.settings.section_id != blank and request.design_mode == false -%}
+<script>
+  (function() {
+    fetch("https://zixherosections.vercel.app/api/public/sections/track-ping", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ section_id: "{{ block.settings.section_id | escape }}" })
+    }).catch(function(){});
+  })();
+</script>
+{%- endif -%}
