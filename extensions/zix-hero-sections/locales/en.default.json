@@ -1,0 +1,11 @@
+{
+  "sections": {
+    "zix": {
+      "days": "Days",
+      "hours": "Hours",
+      "minutes": "Minutes",
+      "seconds": "Seconds",
+      "before_after_drag": "Drag to compare before and after"
+    }
+  }
+}
