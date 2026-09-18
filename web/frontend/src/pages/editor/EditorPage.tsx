@@ -687,12 +687,22 @@ export function EditorPage() {
           {/* Theme Editor instruction */}
           <Box paddingBlockStart="400">
             <Banner tone="info">
-              <BlockStack gap="200">
+              <BlockStack gap="300">
                 <Text as="p" fontWeight="semibold">Add to your Shopify theme</Text>
-                <Text as="p" variant="bodySm">
-                  After saving, go to <strong>Online Store → Themes → Customize</strong>, then click{" "}
-                  <strong>Add section → Apps → Zix Hero Sections</strong>.
-                </Text>
+                <BlockStack gap="100">
+                  <Text as="p" variant="bodySm" fontWeight="semibold">Option 1 — Add as a standalone section (recommended)</Text>
+                  <Text as="p" variant="bodySm">
+                    Go to <strong>Online Store → Themes → Customize</strong>. In the left panel, scroll to the bottom and click{" "}
+                    <strong>Add section</strong>, then choose <strong>Apps → Zix Hero Sections</strong>.
+                  </Text>
+                </BlockStack>
+                <BlockStack gap="100">
+                  <Text as="p" variant="bodySm" fontWeight="semibold">Option 2 — Add as a block inside an existing section</Text>
+                  <Text as="p" variant="bodySm">
+                    Open any theme section that supports app blocks, click <strong>Add block</strong> at the bottom of that section's settings, then choose{" "}
+                    <strong>Apps → Zix Hero Section</strong>.
+                  </Text>
+                </BlockStack>
               </BlockStack>
             </Banner>
           </Box>
