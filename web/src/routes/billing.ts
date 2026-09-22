@@ -19,8 +19,26 @@ billingRouter.use(requireShop);
 billingRouter.get("/", async (req, res) => {
   const shop = res.locals["shop"];
   const sub = shop.subscription;
-  const currentPlan: Plan = sub?.plan ?? "FREE";
-  // Only show the plan as "current" if the subscription is ACTIVE
+
+  // Determine the TRULY active plan the merchant is currently on.
+  // If status is PENDING (charge awaiting approval), we must NOT show the
+  // pending plan — the merchant hasn't accepted yet so nothing has changed.
+  //
+  // Two scenarios:
+  //   New code path:  plan=FREE,     pendingPlan=ULTIMATE → currentPlan=FREE ✓
+  //   Legacy data:    plan=ULTIMATE, pendingPlan=null      → currentPlan=FREE ✓
+  //   BASIC→ULTIMATE: plan=BASIC,    pendingPlan=ULTIMATE  → currentPlan=BASIC ✓
+  let currentPlan: Plan;
+  if (sub?.status === "PENDING") {
+    // If pendingPlan is null or matches plan, the old code incorrectly stored
+    // the new plan in the plan field — treat it as FREE (no active paid plan).
+    const planEqualsOrPredatesPending =
+      !sub.pendingPlan || sub.plan === (sub.pendingPlan as string);
+    currentPlan = planEqualsOrPredatesPending ? "FREE" : (sub.plan as Plan);
+  } else {
+    currentPlan = (sub?.plan as Plan) ?? "FREE";
+  }
+
   const isSubscriptionActive = sub?.status === "ACTIVE";
 
   const plans = [
