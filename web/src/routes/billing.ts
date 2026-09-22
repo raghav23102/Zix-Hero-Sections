@@ -9,37 +9,34 @@ import {
   createShopifySubscription,
   cancelShopifySubscription,
   confirmSubscription,
+  syncSubscriptionWithShopify,
 } from "../services/billingService.js";
 import { Plan, PLAN_LIMITS, PLAN_PRICES } from "../shared/types.js";
+import { prisma } from "../db.js";
 
 export const billingRouter = Router();
 billingRouter.use(requireShop);
 
-// GET /api/billing — current plan and pricing info
+// GET /api/billing — sync with Shopify, return current plan + pricing info
 billingRouter.get("/", async (req, res) => {
   const shop = res.locals["shop"];
-  const sub = shop.subscription;
+  const accessToken: string =
+    res.locals.shopify?.session?.accessToken ?? shop.accessToken ?? "";
 
-  // Determine the TRULY active plan the merchant is currently on.
-  // If status is PENDING (charge awaiting approval), we must NOT show the
-  // pending plan — the merchant hasn't accepted yet so nothing has changed.
-  //
-  // Two scenarios:
-  //   New code path:  plan=FREE,     pendingPlan=ULTIMATE → currentPlan=FREE ✓
-  //   Legacy data:    plan=ULTIMATE, pendingPlan=null      → currentPlan=FREE ✓
-  //   BASIC→ULTIMATE: plan=BASIC,    pendingPlan=ULTIMATE  → currentPlan=BASIC ✓
-  let currentPlan: Plan;
-  if (sub?.status === "PENDING") {
-    // If pendingPlan is null or matches plan, the old code incorrectly stored
-    // the new plan in the plan field — treat it as FREE (no active paid plan).
-    const planEqualsOrPredatesPending =
-      !sub.pendingPlan || sub.plan === (sub.pendingPlan as string);
-    currentPlan = planEqualsOrPredatesPending ? "FREE" : (sub.plan as Plan);
-  } else {
-    currentPlan = (sub?.plan as Plan) ?? "FREE";
+  // Sync with Shopify to get the true current plan.
+  // This ensures no stale state — Shopify is the source of truth.
+  let currentPlan: Plan = "FREE";
+  try {
+    currentPlan = await syncSubscriptionWithShopify(shop.shopDomain, accessToken);
+  } catch (err) {
+    console.error("[Billing] Sync failed, using DB fallback:", err);
+    currentPlan = (shop.subscription?.plan as Plan) ?? "FREE";
   }
 
-  const isSubscriptionActive = sub?.status === "ACTIVE";
+  // Re-read the subscription from DB after sync
+  const updatedSub = await prisma.subscription.findUnique({
+    where: { shopId: shop.id },
+  });
 
   const plans = [
     {
@@ -55,8 +52,7 @@ billingRouter.get("/", async (req, res) => {
         "Responsive design",
         "Theme Editor support",
       ],
-      // FREE plan is "current" when plan is FREE and no pending upgrade
-      isCurrent: currentPlan === "FREE" && !sub?.pendingPlan,
+      isCurrent: currentPlan === "FREE",
     },
     {
       id: "BASIC",
@@ -71,7 +67,7 @@ billingRouter.get("/", async (req, res) => {
         "Responsive controls",
         "Product Showcase & Fashion layouts",
       ],
-      isCurrent: currentPlan === "BASIC" && isSubscriptionActive,
+      isCurrent: currentPlan === "BASIC",
     },
     {
       id: "PRO",
@@ -88,7 +84,7 @@ billingRouter.get("/", async (req, res) => {
         "Countdown Timer",
         "Gradient layouts",
       ],
-      isCurrent: currentPlan === "PRO" && isSubscriptionActive,
+      isCurrent: currentPlan === "PRO",
     },
     {
       id: "ULTIMATE",
@@ -105,7 +101,7 @@ billingRouter.get("/", async (req, res) => {
         "Premium Editorial",
         "Priority support",
       ],
-      isCurrent: currentPlan === "ULTIMATE" && isSubscriptionActive,
+      isCurrent: currentPlan === "ULTIMATE",
     },
   ];
 
@@ -113,14 +109,11 @@ billingRouter.get("/", async (req, res) => {
     success: true,
     data: {
       currentPlan,
-      subscription: sub
+      subscription: updatedSub
         ? {
-            plan: sub.plan,
-            pendingPlan: sub.pendingPlan ?? null,
-            status: sub.status,
-            cancelledAt: sub.cancelledAt ?? null,
-            currentPeriodEnd: sub.currentPeriodEnd ?? null,
-            shopifyConfirmationUrl: sub.shopifyConfirmationUrl ?? null,
+            plan: updatedSub.plan,
+            status: updatedSub.status,
+            currentPeriodEnd: updatedSub.currentPeriodEnd ?? null,
           }
         : null,
       plans,
@@ -128,28 +121,28 @@ billingRouter.get("/", async (req, res) => {
   });
 });
 
+// POST /api/billing/subscribe — create a Shopify billing charge
 const subscribePlanSchema = z.object({
   plan: z.enum(["BASIC", "PRO", "ULTIMATE"]),
   returnUrl: z.string().url().optional(),
 });
 
-// POST /api/billing/subscribe — create a Shopify billing charge
 billingRouter.post("/subscribe", async (req, res) => {
   const shop = res.locals["shop"];
 
   const parsed = subscribePlanSchema.safeParse(req.body);
   if (!parsed.success) {
-    console.error("[Billing] Zod validation failed:", parsed.error, "Body:", req.body);
-    res.status(400).json({ success: false, error: "Invalid plan selection or missing payload." });
+    res.status(400).json({ success: false, error: "Invalid plan selection." });
     return;
   }
 
   const { plan, returnUrl } = parsed.data;
   const appUrl = process.env["SHOPIFY_APP_URL"];
   if (!appUrl) {
-    res.status(500).json({ success: false, error: "Server misconfiguration: SHOPIFY_APP_URL is missing." });
+    res.status(500).json({ success: false, error: "Server misconfiguration." });
     return;
   }
+
   const confirmUrl = returnUrl ?? `${appUrl}/billing?confirmed=true`;
 
   try {
@@ -157,14 +150,11 @@ billingRouter.post("/subscribe", async (req, res) => {
       shop.shopDomain,
       plan as Plan,
       confirmUrl,
-      res.locals.shopify.session.accessToken
+      res.locals.shopify?.session?.accessToken
     );
 
     if (!result) {
-      res.status(500).json({
-        success: false,
-        error: "Unable to create subscription. Please try again.",
-      });
+      res.status(500).json({ success: false, error: "Unable to create subscription." });
       return;
     }
 
@@ -177,34 +167,29 @@ billingRouter.post("/subscribe", async (req, res) => {
     });
   } catch (error: any) {
     console.error("[Billing Subscribe Error]", error);
-    
     if (error.message === "SHOPIFY_AUTH_REQUIRED") {
-      const authUrl = `/api/auth?shop=${shop.shopDomain}`;
-      res.setHeader("X-Shopify-API-Request-Failure-Reauthorize-Url", authUrl);
-      res.status(403).json({ success: false, error: "Authentication expired. Please reload the app." });
+      res.setHeader(
+        "X-Shopify-API-Request-Failure-Reauthorize-Url",
+        `/api/auth?shop=${shop.shopDomain}`
+      );
+      res.status(403).json({ success: false, error: "Authentication expired. Please reload." });
       return;
     }
-
-    res.status(400).json({
-      success: false,
-      error: error.message || "Failed to process subscription with Shopify",
-    });
+    res.status(400).json({ success: false, error: error.message ?? "Failed to create subscription." });
   }
 });
 
-// POST /api/billing/cancel — cancel subscription (downgrade to free)
+// POST /api/billing/cancel — downgrade to free (cancels Shopify subscription)
 billingRouter.post("/cancel", async (req, res) => {
   const shop = res.locals["shop"];
-  await cancelShopifySubscription(shop.shopDomain);
-
-  res.json({
-    success: true,
-    message: "Subscription cancelled. You've been moved to the Free plan.",
-  });
+  await cancelShopifySubscription(
+    shop.shopDomain,
+    res.locals.shopify?.session?.accessToken
+  );
+  res.json({ success: true, message: "Subscription cancelled. You are now on the Free plan." });
 });
 
-// GET /api/billing/confirm — called after Shopify redirects back post-approval
-// BUG FIX (Bug A): We now verify the charge status with Shopify before activating.
+// GET /api/billing/confirm — called after Shopify redirects back with charge_id
 billingRouter.get("/confirm", async (req, res) => {
   const shop = res.locals["shop"];
   const chargeId = req.query["charge_id"] as string;
@@ -214,19 +199,17 @@ billingRouter.get("/confirm", async (req, res) => {
     return;
   }
 
-  const result = await confirmSubscription(shop.shopDomain, chargeId);
+  const accessToken: string =
+    res.locals.shopify?.session?.accessToken ?? shop.accessToken ?? "";
+
+  const result = await confirmSubscription(shop.shopDomain, chargeId, accessToken);
 
   if (result.success) {
-    res.json({ success: true, message: "Subscription activated!" });
-  } else if (result.status === "DECLINED") {
-    res.status(200).json({
-      success: false,
-      error: "The charge was declined. No changes have been made to your plan.",
-    });
+    res.json({ success: true, message: "Subscription activated!", plan: result.plan });
   } else {
     res.status(200).json({
       success: false,
-      error: `Could not activate subscription (status: ${result.status}). Please try again.`,
+      error: "Subscription was not approved. No changes have been made.",
     });
   }
 });

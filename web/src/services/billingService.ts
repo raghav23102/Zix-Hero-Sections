@@ -1,5 +1,10 @@
 // ============================================================
 // Billing Service — Shopify Recurring Application Charges
+// Follows standard Shopify billing strategy:
+//   - Shopify is the source of truth for subscription state
+//   - On billing page load we sync from Shopify's activeSubscriptions
+//   - Plan only activates after merchant approves on Shopify
+//   - Downgrade cancels the Shopify subscription via API
 // ============================================================
 
 import { LATEST_API_VERSION } from "@shopify/shopify-api";
@@ -7,10 +12,12 @@ import { prisma } from "../db.js";
 import { Plan, PLAN_PRICES } from "../shared/types.js";
 import { handlePlanDowngrade, syncActiveSections } from "./usageService.js";
 
-interface CreateSubscriptionResult {
-  confirmationUrl: string;
-  subscriptionId: string;
-}
+// Map subscription name → Plan enum (reverse of PLAN_NAMES)
+const NAME_TO_PLAN: Record<string, Plan> = {
+  "Zix Hero Sections Basic": "BASIC",
+  "Zix Hero Sections Pro": "PRO",
+  "Zix Hero Sections Ultimate": "ULTIMATE",
+};
 
 const PLAN_NAMES: Record<Plan, string> = {
   FREE: "Zix Hero Sections Free",
@@ -19,58 +26,56 @@ const PLAN_NAMES: Record<Plan, string> = {
   ULTIMATE: "Zix Hero Sections Ultimate",
 };
 
-// ── Helper: fetch subscription status from Shopify ──────────────────────────
-async function fetchShopifySubscriptionStatus(
+// ── GraphQL helper ───────────────────────────────────────────────────────────
+async function shopifyGraphQL(
   shopDomain: string,
   accessToken: string,
-  subscriptionId: string
-): Promise<{ status: string; name: string } | null> {
-  const query = `
-    query getSubscription($id: ID!) {
-      node(id: $id) {
-        ... on AppSubscription {
-          id
-          name
-          status
-          currentPeriodEnd
-        }
-      }
+  query: string,
+  variables?: Record<string, unknown>
+): Promise<any> {
+  const response = await fetch(
+    `https://${shopDomain}/admin/api/${LATEST_API_VERSION}/graphql.json`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": accessToken,
+      },
+      body: JSON.stringify({ query, variables }),
     }
-  `;
+  );
 
-  try {
-    const response = await fetch(
-      `https://${shopDomain}/admin/api/${LATEST_API_VERSION}/graphql.json`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Shopify-Access-Token": accessToken,
-        },
-        body: JSON.stringify({ query, variables: { id: subscriptionId } }),
-      }
-    );
-
-    if (!response.ok) return null;
-
-    const json: any = await response.json();
-    const node = json?.data?.node;
-    if (!node) return null;
-
-    return { status: node.status as string, name: node.name as string };
-  } catch (err) {
-    console.error("[Billing] fetchShopifySubscriptionStatus error:", err);
-    return null;
+  if (!response.ok) {
+    if (response.status === 401) throw new Error("SHOPIFY_AUTH_REQUIRED");
+    throw new Error(`Shopify API error: ${response.status} ${response.statusText}`);
   }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const json: any = await response.json();
+  if (json.errors) {
+    const msg = typeof json.errors === "string" ? json.errors : json.errors[0]?.message;
+    throw new Error(`Shopify GraphQL Error: ${msg}`);
+  }
+  return json.data;
 }
 
-// ── Helper: fetch active subscriptions from Shopify ─────────────────────────
-export async function fetchActiveShopifySubscriptions(
+// ── syncSubscriptionWithShopify ──────────────────────────────────────────────
+// The core of the billing strategy: query Shopify for what subscriptions are
+// actually active, then update our DB to match.
+// Called on every billing page load so our DB is never stale.
+export async function syncSubscriptionWithShopify(
   shopDomain: string,
   accessToken: string
-): Promise<Array<{ id: string; name: string; status: string }>> {
-  const query = `
-    {
+): Promise<Plan> {
+  const shop = await prisma.shop.findUnique({
+    where: { shopDomain },
+    include: { subscription: true },
+  });
+  if (!shop) return "FREE";
+
+  let activeCharges: Array<{ id: string; name: string; status: string }> = [];
+  try {
+    const data = await shopifyGraphQL(shopDomain, accessToken, `{
       currentAppInstallation {
         activeSubscriptions {
           id
@@ -78,45 +83,92 @@ export async function fetchActiveShopifySubscriptions(
           status
         }
       }
-    }
-  `;
-
-  try {
-    const response = await fetch(
-      `https://${shopDomain}/admin/api/${LATEST_API_VERSION}/graphql.json`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Shopify-Access-Token": accessToken,
-        },
-        body: JSON.stringify({ query }),
-      }
-    );
-
-    if (!response.ok) return [];
-
-    const json: any = await response.json();
-    return json?.data?.currentAppInstallation?.activeSubscriptions ?? [];
+    }`);
+    activeCharges = data?.currentAppInstallation?.activeSubscriptions ?? [];
   } catch (err) {
-    console.error("[Billing] fetchActiveShopifySubscriptions error:", err);
-    return [];
+    console.error("[Billing] Could not fetch Shopify activeSubscriptions:", err);
+    // Cannot verify — return what DB says (don't reset)
+    return (shop.subscription?.plan as Plan) ?? "FREE";
   }
+
+  if (activeCharges.length === 0) {
+    // Shopify has no active subscription → merchant is on FREE
+    const dbPlan = (shop.subscription?.plan as Plan) ?? "FREE";
+    const dbStatus = shop.subscription?.status;
+
+    if (dbPlan !== "FREE" || dbStatus !== "ACTIVE") {
+      // DB is out of sync — reset to FREE (e.g. after uninstall/reinstall or declined charge)
+      console.log(`[Billing] Sync: no active Shopify charge for ${shopDomain}, resetting to FREE`);
+      if (dbPlan !== "FREE") {
+        await handlePlanDowngrade(shop.id, "FREE");
+      }
+      await prisma.subscription.upsert({
+        where: { shopId: shop.id },
+        update: {
+          plan: "FREE",
+          pendingPlan: null,
+          status: "ACTIVE",
+          shopifySubscriptionId: null,
+          shopifyConfirmationUrl: null,
+          cancelledAt: dbPlan !== "FREE" ? new Date() : null,
+        },
+        create: {
+          shopId: shop.id,
+          plan: "FREE",
+          status: "ACTIVE",
+        },
+      });
+    }
+    return "FREE";
+  }
+
+  // Has an active Shopify charge — derive plan from its name
+  const activeCharge = activeCharges[0]!;
+  const activePlan: Plan = NAME_TO_PLAN[activeCharge.name] ?? "FREE";
+
+  // Sync DB to match Shopify
+  const dbPlan = (shop.subscription?.plan as Plan) ?? "FREE";
+  if (dbPlan !== activePlan || shop.subscription?.status !== "ACTIVE") {
+    console.log(`[Billing] Sync: setting ${shopDomain} to plan=${activePlan} from Shopify`);
+    await prisma.subscription.upsert({
+      where: { shopId: shop.id },
+      update: {
+        plan: activePlan,
+        pendingPlan: null,
+        status: "ACTIVE",
+        shopifySubscriptionId: activeCharge.id,
+        shopifyConfirmationUrl: null,
+        cancelledAt: null,
+        currentPeriodStart: shop.subscription?.currentPeriodStart ?? new Date(),
+        currentPeriodEnd: shop.subscription?.currentPeriodEnd ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      },
+      create: {
+        shopId: shop.id,
+        plan: activePlan,
+        status: "ACTIVE",
+        shopifySubscriptionId: activeCharge.id,
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      },
+    });
+    await syncActiveSections(shop.id);
+  }
+
+  return activePlan;
 }
 
 // ── createShopifySubscription ────────────────────────────────────────────────
-// BUG FIX (Bug A): We ONLY store the new plan in `pendingPlan`.
-// The current `plan` field is NOT changed until the merchant accepts the charge
-// and `confirmSubscription` verifies it with Shopify.
+// Creates a Shopify recurring charge and returns the confirmation URL.
+// The merchant is redirected to this URL to approve the charge.
+// The plan is NOT activated until confirmSubscription() verifies approval.
 export async function createShopifySubscription(
   shopDomain: string,
   plan: Plan,
   returnUrl: string,
   activeToken?: string
-): Promise<CreateSubscriptionResult | null> {
+): Promise<{ confirmationUrl: string; subscriptionId: string } | null> {
   if (plan === "FREE") {
-    // Cancel existing subscription for downgrade to free
-    await cancelShopifySubscription(shopDomain);
+    await cancelShopifySubscription(shopDomain, activeToken);
     return null;
   }
 
@@ -126,10 +178,9 @@ export async function createShopifySubscription(
   const shop = await prisma.shop.findUnique({ where: { shopDomain } });
   if (!shop) throw new Error("Shop not found");
 
-  // Use Shopify GraphQL Admin API to create recurring charge
   const accessToken = activeToken ?? shop.accessToken;
 
-  const query = `
+  const data = await shopifyGraphQL(shopDomain, accessToken, `
     mutation appSubscriptionCreate(
       $name: String!
       $lineItems: [AppSubscriptionLineItemInput!]!
@@ -142,107 +193,47 @@ export async function createShopifySubscription(
         returnUrl: $returnUrl
         test: $test
       ) {
-        userErrors {
-          field
-          message
-        }
+        userErrors { field message }
         confirmationUrl
-        appSubscription {
-          id
-          status
-        }
+        appSubscription { id status }
       }
     }
-  `;
-
-  const variables = {
+  `, {
     name: PLAN_NAMES[plan],
     returnUrl,
-    test: true, // Always true for now until app is published
-    lineItems: [
-      {
-        plan: {
-          appRecurringPricingDetails: {
-            price: { amount: price, currencyCode: "USD" },
-            interval: "EVERY_30_DAYS",
-          },
+    test: true,
+    lineItems: [{
+      plan: {
+        appRecurringPricingDetails: {
+          price: { amount: price, currencyCode: "USD" },
+          interval: "EVERY_30_DAYS",
         },
       },
-    ],
-  };
+    }],
+  });
 
-  let json: any;
-  let topLevelErrorMsg = "";
-  try {
-    const response = await fetch(
-      `https://${shopDomain}/admin/api/${LATEST_API_VERSION}/graphql.json`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Shopify-Access-Token": accessToken,
-        },
-        body: JSON.stringify({ query, variables }),
-      }
-    );
-    
-    if (!response.ok) {
-      console.error(`[Billing API] HTTP Error: ${response.status} ${response.statusText}`);
-      if (response.status === 401) {
-        throw new Error("SHOPIFY_AUTH_REQUIRED");
-      }
-    }
-    
-    const text = await response.text();
-    try {
-      json = JSON.parse(text);
-    } catch (e: any) {
-      console.error(`[Billing API] Failed to parse JSON response. Body: ${text}`);
-      throw new Error(`Invalid JSON response from Shopify: ${text.substring(0, 100)}`);
-    }
-
-    if (json.errors) {
-      topLevelErrorMsg = typeof json.errors === "string" ? json.errors : json.errors[0]?.message;
-      console.error(`[Billing API] GraphQL Errors:`, JSON.stringify(json.errors, null, 2));
-    }
-  } catch (error) {
-    console.error("[Billing API] Network or Parsing Error:", error);
-    throw error;
+  const result = data?.appSubscriptionCreate;
+  if (result?.userErrors?.length > 0) {
+    throw new Error(result.userErrors.map((e: any) => e.message).join(", "));
   }
-    
-  const result = json.data?.appSubscriptionCreate;
-  let mutationErrors = "";
-  if (result && (!result.confirmationUrl || !result.appSubscription?.id)) {
-    mutationErrors = result.userErrors?.map((e: any) => e.message).join(", ") ?? "Unknown error";
-  }
-
-  if (topLevelErrorMsg || mutationErrors) {
-    throw new Error(`Shopify GraphQL Error: ${topLevelErrorMsg || mutationErrors}`);
-  }
-
   if (!result?.confirmationUrl || !result?.appSubscription?.id) {
-    throw new Error("Unable to create subscription. Missing confirmation URL.");
+    throw new Error("Unable to create subscription: missing confirmation URL from Shopify.");
   }
 
-  // ── KEY FIX: Store the subscription as PENDING but do NOT change the
-  // current `plan`. We save the intended plan in `pendingPlan` only.
-  // The `plan` field will be updated to the new value only after Shopify
-  // confirms the charge is ACTIVE in confirmSubscription().
+  // Store the pending charge URL so we can surface it if needed
+  // but do NOT change the active plan — merchant hasn't approved yet
   await prisma.subscription.upsert({
     where: { shopId: shop.id },
     update: {
-      pendingPlan: plan,
-      status: "PENDING",
-      shopifySubscriptionId: result.appSubscription.id,
       shopifyConfirmationUrl: result.confirmationUrl,
+      pendingPlan: plan,
     },
     create: {
       shopId: shop.id,
-      plan: "FREE",           // Keep FREE as base until confirmed
-      pendingPlan: plan,
-      status: "PENDING",
-      shopifySubscriptionId: result.appSubscription.id,
+      plan: "FREE",
+      status: "ACTIVE",
       shopifyConfirmationUrl: result.confirmationUrl,
+      pendingPlan: plan,
     },
   });
 
@@ -253,46 +244,49 @@ export async function createShopifySubscription(
 }
 
 // ── confirmSubscription ──────────────────────────────────────────────────────
-// BUG FIX (Bug A): Verify with Shopify API that the charge is actually ACTIVE
-// before updating the DB plan. This prevents a merchant declining/ignoring the
-// charge from having their plan changed.
+// Called when Shopify redirects back after merchant approves/declines.
+// We verify the charge status directly with Shopify — never trust the URL alone.
 export async function confirmSubscription(
   shopDomain: string,
-  chargeId: string
-): Promise<{ success: boolean; status: string }> {
+  chargeId: string,
+  accessToken: string
+): Promise<{ success: boolean; plan: Plan }> {
   const shop = await prisma.shop.findUnique({
     where: { shopDomain },
     include: { subscription: true },
   });
-  if (!shop || !shop.subscription) {
-    return { success: false, status: "NOT_FOUND" };
+  if (!shop) return { success: false, plan: "FREE" };
+
+  // Verify the charge status with Shopify
+  let chargeStatus = "";
+  let chargeName = "";
+  try {
+    const data = await shopifyGraphQL(shopDomain, accessToken, `
+      query getSubscription($id: ID!) {
+        node(id: $id) {
+          ... on AppSubscription {
+            id
+            name
+            status
+          }
+        }
+      }
+    `, { id: chargeId });
+    chargeStatus = data?.node?.status?.toUpperCase() ?? "";
+    chargeName = data?.node?.name ?? "";
+  } catch (err) {
+    console.error("[Billing] Could not verify charge with Shopify:", err);
+    return { success: false, plan: "FREE" };
   }
 
-  // Verify with Shopify that this charge is actually ACTIVE
-  const shopifyStatus = await fetchShopifySubscriptionStatus(
-    shopDomain,
-    shop.accessToken,
-    chargeId
-  );
-
-  if (!shopifyStatus) {
-    console.error(`[Billing] Could not verify subscription ${chargeId} with Shopify for ${shopDomain}`);
-    // Cannot confirm without Shopify's response — leave current state unchanged
-    return { success: false, status: "VERIFICATION_FAILED" };
-  }
-
-  const status = shopifyStatus.status.toUpperCase();
-  console.log(`[Billing] Shopify confirmed subscription ${chargeId} status: ${status} for ${shopDomain}`);
-
-  if (status === "ACTIVE") {
-    // Only now promote pendingPlan → plan
-    const planToActivate = (shop.subscription.pendingPlan ?? shop.subscription.plan) as Plan;
+  if (chargeStatus === "ACTIVE") {
+    const activePlan: Plan = NAME_TO_PLAN[chargeName] ?? "FREE";
 
     await prisma.subscription.update({
       where: { shopId: shop.id },
       data: {
-        plan: planToActivate,
-        pendingPlan: null,          // Clear pending plan
+        plan: activePlan,
+        pendingPlan: null,
         status: "ACTIVE",
         shopifySubscriptionId: chargeId,
         shopifyConfirmationUrl: null,
@@ -302,66 +296,81 @@ export async function confirmSubscription(
       },
     });
 
-    // Sync active sections count after plan activation
     await syncActiveSections(shop.id);
-    return { success: true, status: "ACTIVE" };
-
-  } else if (status === "DECLINED") {
-    // Merchant declined — reset to previous plan, clear pending
-    await prisma.subscription.update({
-      where: { shopId: shop.id },
-      data: {
-        pendingPlan: null,
-        status: "DECLINED",
-        shopifySubscriptionId: null,
-        shopifyConfirmationUrl: null,
-      },
-    });
-    return { success: false, status: "DECLINED" };
-
-  } else {
-    // Pending, frozen, etc. — don't change anything yet
-    console.log(`[Billing] Subscription ${chargeId} is in status ${status}, not activating.`);
-    return { success: false, status };
+    console.log(`[Billing] Activated plan=${activePlan} for ${shopDomain}`);
+    return { success: true, plan: activePlan };
   }
+
+  // DECLINED or any other status — clear pending, leave plan unchanged
+  await prisma.subscription.update({
+    where: { shopId: shop.id },
+    data: { pendingPlan: null, shopifyConfirmationUrl: null },
+  });
+  console.log(`[Billing] Charge ${chargeId} not active (status=${chargeStatus}) for ${shopDomain}`);
+  return { success: false, plan: (shop.subscription?.plan as Plan) ?? "FREE" };
 }
 
 // ── cancelShopifySubscription ────────────────────────────────────────────────
+// Cancels the active Shopify subscription via API, then resets to FREE.
 export async function cancelShopifySubscription(
-  shopDomain: string
+  shopDomain: string,
+  accessToken?: string
 ): Promise<void> {
   const shop = await prisma.shop.findUnique({
     where: { shopDomain },
     include: { subscription: true },
   });
-  if (!shop || !shop.subscription) return;
+  if (!shop) return;
 
-  const previousPlan = shop.subscription.plan as Plan;
-  const newPlan: Plan = "FREE";
+  const token = accessToken ?? shop.accessToken;
+  const subscriptionId = shop.subscription?.shopifySubscriptionId;
 
-  // Handle downgrade — lock excess sections
-  const lockedCount = await handlePlanDowngrade(shop.id, newPlan);
+  // Cancel on Shopify if we have an active subscription ID
+  if (subscriptionId && token) {
+    try {
+      await shopifyGraphQL(shopDomain, token, `
+        mutation appSubscriptionCancel($id: ID!) {
+          appSubscriptionCancel(id: $id) {
+            appSubscription { id status }
+            userErrors { field message }
+          }
+        }
+      `, { id: subscriptionId });
+      console.log(`[Billing] Cancelled Shopify subscription ${subscriptionId} for ${shopDomain}`);
+    } catch (err) {
+      console.error("[Billing] Could not cancel Shopify subscription:", err);
+      // Continue — still reset DB to FREE
+    }
+  }
 
-  await prisma.subscription.update({
+  const previousPlan = (shop.subscription?.plan as Plan) ?? "FREE";
+  if (previousPlan !== "FREE") {
+    await handlePlanDowngrade(shop.id, "FREE");
+  }
+
+  await prisma.subscription.upsert({
     where: { shopId: shop.id },
-    data: {
-      plan: newPlan,
+    update: {
+      plan: "FREE",
       pendingPlan: null,
-      status: "CANCELLED",
+      status: "ACTIVE",
       shopifySubscriptionId: null,
       shopifyConfirmationUrl: null,
       cancelledAt: new Date(),
+      currentPeriodEnd: null,
+    },
+    create: {
+      shopId: shop.id,
+      plan: "FREE",
+      status: "ACTIVE",
     },
   });
 
-  if (lockedCount > 0) {
-    console.log(
-      `[Billing] ${lockedCount} sections locked due to downgrade from ${previousPlan} to FREE for ${shopDomain}`
-    );
-  }
+  console.log(`[Billing] ${shopDomain} downgraded to FREE`);
 }
 
 // ── handleSubscriptionWebhook ────────────────────────────────────────────────
+// Handles app_subscriptions/update webhooks from Shopify.
 export async function handleSubscriptionWebhook(
   shopDomain: string,
   payload: { status: string; id: string; name: string }
@@ -373,37 +382,64 @@ export async function handleSubscriptionWebhook(
   if (!shop) return;
 
   const status = payload.status?.toUpperCase();
+  console.log(`[Webhook] Subscription status=${status} for ${shopDomain}`);
 
   if (status === "CANCELLED" || status === "EXPIRED" || status === "DECLINED") {
-    await prisma.subscription.updateMany({
-      where: {
-        shopId: shop.id,
-        shopifySubscriptionId: payload.id,
-      },
-      data: {
-        status: status as "CANCELLED" | "EXPIRED" | "DECLINED",
+    const currentPlan = (shop.subscription?.plan as Plan) ?? "FREE";
+    if (currentPlan !== "FREE") {
+      await handlePlanDowngrade(shop.id, "FREE");
+    }
+    await prisma.subscription.upsert({
+      where: { shopId: shop.id },
+      update: {
         plan: "FREE",
         pendingPlan: null,
+        status: "ACTIVE",
+        shopifySubscriptionId: null,
         cancelledAt: new Date(),
+        currentPeriodEnd: null,
       },
+      create: { shopId: shop.id, plan: "FREE", status: "ACTIVE" },
     });
-    await handlePlanDowngrade(shop.id, "FREE");
   } else if (status === "ACTIVE") {
-    const sub = shop.subscription;
-    const planToActivate = (sub?.pendingPlan ?? sub?.plan ?? "FREE") as Plan;
-
-    await prisma.subscription.updateMany({
-      where: {
-        shopId: shop.id,
-        shopifySubscriptionId: payload.id,
-      },
-      data: {
-        plan: planToActivate,
+    const activePlan: Plan = NAME_TO_PLAN[payload.name] ?? "FREE";
+    await prisma.subscription.upsert({
+      where: { shopId: shop.id },
+      update: {
+        plan: activePlan,
         pendingPlan: null,
         status: "ACTIVE",
+        shopifySubscriptionId: payload.id,
+        shopifyConfirmationUrl: null,
         currentPeriodStart: new Date(),
         currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        cancelledAt: null,
+      },
+      create: {
+        shopId: shop.id,
+        plan: activePlan,
+        status: "ACTIVE",
+        shopifySubscriptionId: payload.id,
       },
     });
+    await syncActiveSections(shop.id);
+  }
+}
+
+// ── fetchActiveShopifySubscriptions ─────────────────────────────────────────
+// Used by shopService during reinstall
+export async function fetchActiveShopifySubscriptions(
+  shopDomain: string,
+  accessToken: string
+): Promise<Array<{ id: string; name: string; status: string }>> {
+  try {
+    const data = await shopifyGraphQL(shopDomain, accessToken, `{
+      currentAppInstallation {
+        activeSubscriptions { id name status }
+      }
+    }`);
+    return data?.currentAppInstallation?.activeSubscriptions ?? [];
+  } catch {
+    return [];
   }
 }

@@ -1,5 +1,7 @@
 // ============================================================
-// Billing Page — Professional pricing cards with Shopify billing
+// Billing Page — Simple standard Shopify billing UI
+// Free plan by default. Merchant upgrades → Shopify approval → plan unlocks.
+// Merchant downgrades → immediate free plan.
 // ============================================================
 
 import React, { useEffect, useState, useCallback } from "react";
@@ -12,25 +14,14 @@ import {
   Button,
   BlockStack,
   InlineStack,
-  Badge,
   List,
   Spinner,
   Box,
   Banner,
   Divider,
-  Link,
 } from "@shopify/polaris";
 import { billingApi } from "../lib/api";
 import { useAppContext } from "../contexts/AppContext";
-
-interface SubscriptionInfo {
-  plan: string;
-  pendingPlan: string | null;
-  status: string;
-  cancelledAt: string | null;
-  currentPeriodEnd: string | null;
-  shopifyConfirmationUrl: string | null;
-}
 
 interface PlanData {
   id: string;
@@ -42,45 +33,34 @@ interface PlanData {
   isCurrent: boolean;
 }
 
-const PLAN_STYLES: Record<string, { gradient: string; badge: string; accent: string }> = {
-  FREE:     { gradient: "linear-gradient(135deg, #f5f5f5, #e8e8e8)", badge: "#777", accent: "#555" },
-  BASIC:    { gradient: "linear-gradient(135deg, #e3f2fd, #bbdefb)", badge: "#1565c0", accent: "#1976d2" },
-  PRO:      { gradient: "linear-gradient(135deg, #fff8e1, #ffe082)", badge: "#f57f17", accent: "#f9a825" },
-  ULTIMATE: { gradient: "linear-gradient(135deg, #f3e5f5, #ce93d8)", badge: "#6a1b9a", accent: "#8e24aa" },
+const PLAN_STYLES: Record<string, { gradient: string; accent: string }> = {
+  FREE:     { gradient: "linear-gradient(135deg, #f5f5f5, #e8e8e8)", accent: "#555" },
+  BASIC:    { gradient: "linear-gradient(135deg, #e3f2fd, #bbdefb)", accent: "#1976d2" },
+  PRO:      { gradient: "linear-gradient(135deg, #fff8e1, #ffe082)", accent: "#f9a825" },
+  ULTIMATE: { gradient: "linear-gradient(135deg, #f3e5f5, #ce93d8)", accent: "#8e24aa" },
 };
-
-const PLAN_DISPLAY: Record<string, string> = {
-  FREE: "Free", BASIC: "Basic", PRO: "Pro", ULTIMATE: "Ultimate",
-};
-
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return "";
-  return new Date(iso).toLocaleDateString("en-US", {
-    year: "numeric", month: "long", day: "numeric",
-  });
-}
 
 export function Billing() {
   const [searchParams] = useSearchParams();
   const { shop, usage, refresh } = useAppContext();
   const [plans, setPlans] = useState<PlanData[]>([]);
-  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
+  const [currentPlan, setCurrentPlan] = useState<string>("FREE");
+  const [nextBillingDate, setNextBillingDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [subscribing, setSubscribing] = useState<string | null>(null);
-  const [cancelling, setCancelling] = useState(false);
+  const [actionPlan, setActionPlan] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [currentPlan, setCurrentPlan] = useState<string>("FREE");
 
   const isConfirmed = searchParams.get("confirmed") === "true";
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await billingApi.getInfo();
-      setPlans(response.data.plans);
-      setCurrentPlan(response.data.currentPlan);
-      setSubscription(response.data.subscription as SubscriptionInfo | null);
+      const res = await billingApi.getInfo();
+      setPlans(res.data.plans);
+      setCurrentPlan(res.data.currentPlan);
+      const sub = res.data.subscription as any;
+      setNextBillingDate(sub?.currentPeriodEnd ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load billing info.");
     } finally {
@@ -96,26 +76,29 @@ export function Billing() {
     }
   }, [load, isConfirmed, refresh]);
 
-  // ── Subscribe / upgrade ──────────────────────────────────────────────────
   const handleSubscribe = useCallback(async (planId: string) => {
+    // Downgrade to Free
     if (planId === "FREE") {
-      if (!confirm("Are you sure you want to downgrade to the Free plan? Excess sections will be locked.")) return;
+      if (!confirm("Downgrade to Free? Sections over your limit will be locked.")) return;
       try {
-        setSubscribing("FREE");
+        setActionPlan("FREE");
+        setError(null);
         await billingApi.cancel();
-        setSuccess("You've been moved to the Free plan.");
+        setSuccess("You're now on the Free plan.");
         await Promise.all([load(), refresh()]);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unable to cancel subscription.");
       } finally {
-        setSubscribing(null);
+        setActionPlan(null);
       }
       return;
     }
 
+    // Upgrade / switch plan — redirect to Shopify billing approval
     try {
-      setSubscribing(planId);
+      setActionPlan(planId);
       setError(null);
+
       const urlParams = new URLSearchParams(window.location.search);
       const shopParam = shop?.shopDomain || urlParams.get("shop") || "";
       const shopName = shopParam.replace(".myshopify.com", "");
@@ -124,45 +107,17 @@ export function Billing() {
         ? `https://admin.shopify.com/store/${shopName}/apps/${apiKey}/billing?confirmed=true`
         : `${window.location.origin}/billing?confirmed=true`;
 
-      const response = await billingApi.subscribe(planId, returnUrl);
-      if (response.data?.confirmationUrl) {
+      const res = await billingApi.subscribe(planId, returnUrl);
+      if (res.data?.confirmationUrl) {
+        // Redirect to Shopify billing confirmation — must escape the iframe
         const target = window.top || window;
-        target.location.href = response.data.confirmationUrl;
+        target.location.href = res.data.confirmationUrl;
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to start subscription.");
-      setSubscribing(null);
+      setActionPlan(null);
     }
-  }, [load, refresh, shop?.shopDomain]);
-
-  // ── Cancel pending subscription (if merchant went back without approving) ─
-  const handleCancelPending = useCallback(async () => {
-    if (!confirm("Cancel this pending subscription request? You can subscribe again at any time.")) return;
-    try {
-      setCancelling(true);
-      await billingApi.cancel();
-      setSuccess("Pending subscription cancelled. You remain on the Free plan.");
-      await Promise.all([load(), refresh()]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to cancel pending subscription.");
-    } finally {
-      setCancelling(false);
-    }
-  }, [load, refresh]);
-
-  // ── Derived state ────────────────────────────────────────────────────────
-  const isPending = subscription?.status === "PENDING";
-  const pendingPlanId = subscription?.pendingPlan ?? (isPending ? subscription?.plan ?? null : null);
-  const pendingPlanName = pendingPlanId ? (PLAN_DISPLAY[pendingPlanId] ?? pendingPlanId) : null;
-  const confirmationUrl = subscription?.shopifyConfirmationUrl ?? null;
-
-  // Reinstall: previous paid plan was cancelled on uninstall
-  const previousPaidPlan =
-    subscription &&
-    ["CANCELLED", "EXPIRED", "DECLINED"].includes(subscription.status) &&
-    subscription.plan !== "FREE"
-      ? subscription.plan
-      : null;
+  }, [shop?.shopDomain, load, refresh]);
 
   if (loading) {
     return (
@@ -184,7 +139,6 @@ export function Billing() {
     <Page title="Billing" subtitle="Choose the plan that fits your store">
       <Layout>
 
-        {/* ── Success banner ─────────────────────────────────────────────── */}
         {success && (
           <Layout.Section>
             <Banner tone="success" onDismiss={() => setSuccess(null)}>
@@ -193,7 +147,6 @@ export function Billing() {
           </Layout.Section>
         )}
 
-        {/* ── Error banner ───────────────────────────────────────────────── */}
         {error && (
           <Layout.Section>
             <Banner tone="critical" onDismiss={() => setError(null)}>
@@ -202,103 +155,35 @@ export function Billing() {
           </Layout.Section>
         )}
 
-        {/* ── PENDING: approval banner ────────────────────────────────────
-            Shown when the merchant clicked Subscribe but hasn't approved yet.
-            Their current plan is UNCHANGED until they click Approve on Shopify.
-        ──────────────────────────────────────────────────────────────────── */}
-        {isPending && pendingPlanName && (
-          <Layout.Section>
-            <Banner
-              tone="info"
-              title={`Approval required for ${pendingPlanName} plan`}
-            >
-              <BlockStack gap="300">
-                <Text as="p">
-                  You started a subscription to the <strong>{pendingPlanName}</strong> plan but
-                  haven't approved it yet. <strong>Your current plan is unchanged</strong> — no
-                  features have been unlocked or charged until you approve.
-                </Text>
-                <InlineStack gap="300" wrap={false}>
-                  {confirmationUrl && (
-                    <Button
-                      variant="primary"
-                      onClick={() => {
-                        const target = window.top || window;
-                        target.location.href = confirmationUrl;
-                      }}
-                      id="pending-complete-approval"
-                    >
-                      Complete Approval →
-                    </Button>
-                  )}
-                  <Button
-                    tone="critical"
-                    variant="plain"
-                    loading={cancelling}
-                    onClick={() => void handleCancelPending()}
-                    id="pending-cancel"
-                  >
-                    Cancel Pending Request
-                  </Button>
-                </InlineStack>
-              </BlockStack>
-            </Banner>
-          </Layout.Section>
-        )}
-
-        {/* ── Reinstall: previous paid plan expired banner ────────────────── */}
-        {previousPaidPlan && (
-          <Layout.Section>
-            <Banner
-              tone="warning"
-              title={`Your previous ${PLAN_DISPLAY[previousPaidPlan] ?? previousPaidPlan} plan has ended`}
-            >
-              <BlockStack gap="300">
-                <Text as="p">
-                  Your <strong>{PLAN_DISPLAY[previousPaidPlan] ?? previousPaidPlan}</strong> plan
-                  was cancelled when the app was uninstalled
-                  {subscription?.cancelledAt ? ` on ${formatDate(subscription.cancelledAt)}` : ""}.
-                  You are currently on the <strong>Free</strong> plan.
-                </Text>
-                <div>
-                  <Button
-                    variant="primary"
-                    loading={subscribing === previousPaidPlan}
-                    onClick={() => void handleSubscribe(previousPaidPlan)}
-                    id={`plan-resubscribe-${previousPaidPlan}`}
-                  >
-                    Re-subscribe to {PLAN_DISPLAY[previousPaidPlan] ?? previousPaidPlan} Plan
-                  </Button>
-                </div>
-              </BlockStack>
-            </Banner>
-          </Layout.Section>
-        )}
-
-        {/* ── Current usage ─────────────────────────────────────────────── */}
+        {/* Current usage summary */}
         {usage && (
           <Layout.Section>
             <Card>
               <InlineStack align="space-between" blockAlign="center" gap="400">
                 <BlockStack gap="100">
                   <Text as="p" variant="bodySm" tone="subdued">Current Plan</Text>
-                  {/* Show only the ACTIVE plan name — no PENDING badge here */}
                   <Text as="p" variant="headingMd" fontWeight="bold">
-                    {PLAN_DISPLAY[currentPlan] ?? currentPlan}
+                    {currentPlan === "FREE" ? "Free" :
+                     currentPlan === "BASIC" ? "Basic" :
+                     currentPlan === "PRO" ? "Pro" : "Ultimate"}
                   </Text>
                 </BlockStack>
                 <BlockStack gap="100">
-                  <Text as="p" variant="bodySm" tone="subdued">Sections</Text>
+                  <Text as="p" variant="bodySm" tone="subdued">Sections Used</Text>
                   <Text as="p" variant="headingMd">{usage.activeSections} / {usage.sectionLimit}</Text>
                 </BlockStack>
                 <BlockStack gap="100">
                   <Text as="p" variant="bodySm" tone="subdued">Templates Available</Text>
                   <Text as="p" variant="headingMd">{usage.templateLimit} / 14</Text>
                 </BlockStack>
-                {subscription?.currentPeriodEnd && subscription.status === "ACTIVE" && (
+                {nextBillingDate && currentPlan !== "FREE" && (
                   <BlockStack gap="100">
                     <Text as="p" variant="bodySm" tone="subdued">Next Billing Date</Text>
-                    <Text as="p" variant="headingMd">{formatDate(subscription.currentPeriodEnd)}</Text>
+                    <Text as="p" variant="headingMd">
+                      {new Date(nextBillingDate).toLocaleDateString("en-US", {
+                        year: "numeric", month: "short", day: "numeric",
+                      })}
+                    </Text>
                   </BlockStack>
                 )}
               </InlineStack>
@@ -306,24 +191,20 @@ export function Billing() {
           </Layout.Section>
         )}
 
-        {/* ── Pricing Cards ─────────────────────────────────────────────── */}
+        {/* Pricing cards */}
         <Layout.Section>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "20px" }}>
             {plans.map((plan) => {
               const style = (PLAN_STYLES[plan.id] ?? PLAN_STYLES["FREE"])!;
-              // isCurrent is driven by backend (only true when ACTIVE matches plan)
-              const isCurrentPlan = plan.isCurrent;
+              const isCurrent = plan.isCurrent;
+              const isHigher = !isCurrent && plan.id !== "FREE" && plan.price > (plans.find(p => p.isCurrent)?.price ?? 0);
               const isPopular = plan.id === "PRO";
-              // This plan has a pending charge awaiting approval
-              const isPendingThisPlan = isPending && pendingPlanId === plan.id;
 
               return (
                 <div
                   key={plan.id}
                   style={{
-                    border: isCurrentPlan
-                      ? `2px solid ${style.accent}`
-                      : "1px solid #e1e3e5",
+                    border: isCurrent ? `2px solid ${style.accent}` : "1px solid #e1e3e5",
                     borderRadius: "16px",
                     overflow: "hidden",
                     position: "relative",
@@ -339,14 +220,16 @@ export function Billing() {
                     (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
                   }}
                 >
-                  {isPopular && !isCurrentPlan && (
-                    <div style={{ position: "absolute", top: "16px", right: "16px", background: style.accent, color: "#fff", fontSize: "11px", fontWeight: 700, padding: "3px 10px", borderRadius: "12px" }}>
-                      POPULAR
-                    </div>
-                  )}
-                  {isCurrentPlan && (
+                  {/* CURRENT badge */}
+                  {isCurrent && (
                     <div style={{ position: "absolute", top: "16px", left: "16px", background: style.accent, color: "#fff", fontSize: "11px", fontWeight: 700, padding: "3px 10px", borderRadius: "12px" }}>
                       CURRENT
+                    </div>
+                  )}
+                  {/* POPULAR badge (only on PRO if not current) */}
+                  {isPopular && !isCurrent && (
+                    <div style={{ position: "absolute", top: "16px", right: "16px", background: style.accent, color: "#fff", fontSize: "11px", fontWeight: 700, padding: "3px 10px", borderRadius: "12px" }}>
+                      POPULAR
                     </div>
                   )}
 
@@ -361,7 +244,8 @@ export function Billing() {
                           <span style={{ color: "#1a1a1a" }}>Free</span>
                         ) : (
                           <span style={{ color: "#1a1a1a" }}>
-                            ${plan.price}<span style={{ fontSize: "16px", fontWeight: 400 }}>/mo</span>
+                            ${plan.price}
+                            <span style={{ fontSize: "16px", fontWeight: 400 }}>/mo</span>
                           </span>
                         )}
                       </Text>
@@ -391,41 +275,18 @@ export function Billing() {
                       </List>
 
                       <div style={{ paddingTop: "8px" }}>
-                        {isCurrentPlan ? (
-                          // Currently active plan
+                        {isCurrent ? (
                           <Button fullWidth disabled id={`plan-current-${plan.id}`}>
                             Current Plan
                           </Button>
-                        ) : isPendingThisPlan && confirmationUrl ? (
-                          // This plan has a pending charge — show "Complete Approval" link
-                          <Button
-                            fullWidth
-                            variant="primary"
-                            onClick={() => {
-                              const target = window.top || window;
-                              target.location.href = confirmationUrl;
-                            }}
-                            id={`plan-approve-${plan.id}`}
-                          >
-                            Complete Approval →
-                          </Button>
-                        ) : isPendingThisPlan ? (
-                          // Pending but no confirmation URL stored
-                          <Button fullWidth variant="primary"
-                            loading={subscribing === plan.id}
-                            onClick={() => void handleSubscribe(plan.id)}
-                            id={`plan-resubmit-${plan.id}`}
-                          >
-                            Retry Subscription
-                          </Button>
-                        ) : plan.id === "FREE" && currentPlan !== "FREE" ? (
+                        ) : plan.id === "FREE" ? (
                           <Button
                             fullWidth
                             tone="critical"
                             variant="plain"
-                            loading={subscribing === "FREE"}
+                            loading={actionPlan === "FREE"}
                             onClick={() => void handleSubscribe("FREE")}
-                            id={`plan-downgrade-${plan.id}`}
+                            id="plan-downgrade-free"
                           >
                             Downgrade to Free
                           </Button>
@@ -433,13 +294,13 @@ export function Billing() {
                           <Button
                             fullWidth
                             variant="primary"
-                            loading={subscribing === plan.id}
+                            loading={actionPlan === plan.id}
                             onClick={() => void handleSubscribe(plan.id)}
                             id={`plan-subscribe-${plan.id}`}
                           >
-                            {currentPlan === "FREE" || subscription?.status !== "ACTIVE"
+                            {currentPlan === "FREE"
                               ? `Subscribe to ${plan.name}`
-                              : currentPlan < plan.id
+                              : isHigher
                               ? `Upgrade to ${plan.name}`
                               : `Switch to ${plan.name}`}
                           </Button>
@@ -453,20 +314,19 @@ export function Billing() {
           </div>
         </Layout.Section>
 
-        {/* FAQ / Note */}
+        {/* Billing info */}
         <Layout.Section>
           <Card>
             <BlockStack gap="300">
               <Text as="h3" variant="headingSm" fontWeight="semibold">Billing Information</Text>
               <Text as="p" variant="bodySm" tone="subdued">
-                All plans are billed monthly through Shopify. You can upgrade or downgrade at any time.
-                When you upgrade, you get instant access to additional templates and sections.
-                When you downgrade, your existing sections are preserved but excess sections are locked until you upgrade again.
+                All plans are billed monthly through Shopify. When you click Subscribe or Upgrade,
+                you'll be taken to Shopify's approval page. Your plan only changes after you approve
+                the charge — nothing is activated until then.
               </Text>
               <Text as="p" variant="bodySm" tone="subdued">
-                Payments are processed securely by Shopify. You can cancel anytime from your Shopify Admin under Apps.
-                If you reinstall the app after uninstalling, your previous subscription will not be automatically restored —
-                you will need to re-subscribe to your preferred plan.
+                When you downgrade, sections over your new plan's limit will be locked (not deleted).
+                They'll become available again if you upgrade. Payments are handled securely by Shopify.
               </Text>
             </BlockStack>
           </Card>
