@@ -164,7 +164,14 @@ export const billingApi = {
       success: boolean;
       data: {
         currentPlan: string;
-        subscription: unknown;
+        subscription: {
+          plan: string;
+          pendingPlan: string | null;
+          status: string;
+          cancelledAt: string | null;
+          currentPeriodEnd: string | null;
+          shopifyConfirmationUrl: string | null;
+        } | null;
         plans: Array<{
           id: string;
           name: string;

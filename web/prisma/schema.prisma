@@ -115,6 +115,7 @@ model Subscription {
   id                     String             @id @default(uuid())
   shopId                 String             @unique
   plan                   Plan               @default(FREE)
+  pendingPlan            Plan?              // Plan awaiting merchant approval on Shopify
   status                 SubscriptionStatus @default(ACTIVE)
   shopifySubscriptionId  String?            // Shopify's recurring charge ID
   shopifyConfirmationUrl String?            // URL for merchant to confirm billing

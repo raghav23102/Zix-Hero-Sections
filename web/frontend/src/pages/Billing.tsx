@@ -19,9 +19,17 @@ import {
   Banner,
   Divider,
 } from "@shopify/polaris";
-import { CheckIcon, StarIcon } from "@shopify/polaris-icons";
 import { billingApi } from "../lib/api";
 import { useAppContext } from "../contexts/AppContext";
+
+interface SubscriptionInfo {
+  plan: string;
+  pendingPlan: string | null;
+  status: string;
+  cancelledAt: string | null;
+  currentPeriodEnd: string | null;
+  shopifyConfirmationUrl: string | null;
+}
 
 interface PlanData {
   id: string;
@@ -40,11 +48,20 @@ const PLAN_STYLES: Record<string, { gradient: string; badge: string; accent: str
   ULTIMATE: { gradient: "linear-gradient(135deg, #f3e5f5, #ce93d8)", badge: "#6a1b9a", accent: "#8e24aa" },
 };
 
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return "";
+  return new Date(iso).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
 export function Billing() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { usage, refresh } = useAppContext();
+  const { shop, usage, refresh } = useAppContext();
   const [plans, setPlans] = useState<PlanData[]>([]);
+  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [subscribing, setSubscribing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +76,7 @@ export function Billing() {
       const response = await billingApi.getInfo();
       setPlans(response.data.plans);
       setCurrentPlan(response.data.currentPlan);
+      setSubscription(response.data.subscription as SubscriptionInfo | null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load billing info.");
     } finally {
@@ -93,26 +111,22 @@ export function Billing() {
     try {
       setSubscribing(planId);
       setError(null);
-      // Extract shop from either AppContext or the current URL (if context isn't loaded)
       const urlParams = new URLSearchParams(window.location.search);
-      const shopParam = usage?.shopDomain || urlParams.get("shop") || "";
+      const shopParam = shop?.shopDomain || urlParams.get("shop") || "";
       const shopName = shopParam.replace(".myshopify.com", "");
-      
-      const apiKey = "b032eb456c32ff2cc4b6a036d39feb1c"; // Guaranteed correct Client ID
-      
+
+      const apiKey = "b032eb456c32ff2cc4b6a036d39feb1c";
+
       let returnUrl = "";
       if (shopName) {
-        // This ensures Shopify safely escapes the iframe and reinjects host/shop params upon return
         returnUrl = `https://admin.shopify.com/store/${shopName}/apps/${apiKey}/billing?confirmed=true`;
       } else {
-        // Extreme fallback if shop is completely lost
         returnUrl = `${window.location.origin}/billing?confirmed=true`;
       }
-      
+
       const response = await billingApi.subscribe(planId, returnUrl);
 
       if (response.data?.confirmationUrl) {
-        // Use window.top to escape the Shopify iframe (required for Shopify billing)
         const target = window.top || window;
         target.location.href = response.data.confirmationUrl;
       }
@@ -120,7 +134,20 @@ export function Billing() {
       setError(err instanceof Error ? err.message : "Unable to start subscription.");
       setSubscribing(null);
     }
-  }, [load, refresh]);
+  }, [load, refresh, shop?.shopDomain]);
+
+  // ── Derived state ──────────────────────────────────────────────────────────
+  // A subscription is "cancelled after reinstall" if the status is CANCELLED /
+  // EXPIRED / DECLINED AND the plan recorded is non-FREE (i.e. they had a paid
+  // plan before but it was reset on reinstall).
+  const previousPaidPlan =
+    subscription &&
+    ["CANCELLED", "EXPIRED", "DECLINED"].includes(subscription.status) &&
+    subscription.plan !== "FREE"
+      ? subscription.plan
+      : null;
+
+  const previousPlanStyle = previousPaidPlan ? (PLAN_STYLES[previousPaidPlan] ?? PLAN_STYLES["FREE"]) : null;
 
   if (loading) {
     return (
@@ -159,14 +186,67 @@ export function Billing() {
           </Layout.Section>
         )}
 
-        {/* Current usage */}
+        {/* ── Bug B Fix: Reinstall notice ──────────────────────────────────── */}
+        {previousPaidPlan && (
+          <Layout.Section>
+            <Banner
+              tone="warning"
+              title={`Your previous ${previousPaidPlan.charAt(0) + previousPaidPlan.slice(1).toLowerCase()} plan has ended`}
+            >
+              <BlockStack gap="300">
+                <Text as="p">
+                  Your{" "}
+                  <strong>
+                    {previousPaidPlan.charAt(0) + previousPaidPlan.slice(1).toLowerCase()}
+                  </strong>{" "}
+                  plan subscription was cancelled when the app was uninstalled
+                  {subscription?.cancelledAt
+                    ? ` on ${formatDate(subscription.cancelledAt)}`
+                    : ""}
+                  . You are currently on the{" "}
+                  <strong>Free</strong> plan.
+                </Text>
+                <Text as="p" tone="subdued">
+                  Re-subscribe below to restore access to your previous plan's features.
+                </Text>
+                <div>
+                  <Button
+                    variant="primary"
+                    loading={subscribing === previousPaidPlan}
+                    onClick={() => void handleSubscribe(previousPaidPlan)}
+                    id={`plan-resubscribe-${previousPaidPlan}`}
+                  >
+                    Re-subscribe to {previousPaidPlan.charAt(0) + previousPaidPlan.slice(1).toLowerCase()} Plan
+                  </Button>
+                </div>
+              </BlockStack>
+            </Banner>
+          </Layout.Section>
+        )}
+
+        {/* ── Current usage ─────────────────────────────────────────────────── */}
         {usage && (
           <Layout.Section>
             <Card>
               <InlineStack align="space-between" blockAlign="center" gap="400">
                 <BlockStack gap="100">
                   <Text as="p" variant="bodySm" tone="subdued">Current Plan</Text>
-                  <Text as="p" variant="headingMd" fontWeight="bold">{currentPlan}</Text>
+                  <InlineStack gap="200" blockAlign="center">
+                    <Text as="p" variant="headingMd" fontWeight="bold">{currentPlan}</Text>
+                    {subscription && (
+                      <Badge
+                        tone={
+                          subscription.status === "ACTIVE"
+                            ? "success"
+                            : subscription.status === "PENDING"
+                            ? "attention"
+                            : "critical"
+                        }
+                      >
+                        {subscription.status}
+                      </Badge>
+                    )}
+                  </InlineStack>
                 </BlockStack>
                 <BlockStack gap="100">
                   <Text as="p" variant="bodySm" tone="subdued">Sections</Text>
@@ -176,24 +256,33 @@ export function Billing() {
                   <Text as="p" variant="bodySm" tone="subdued">Templates Available</Text>
                   <Text as="p" variant="headingMd">{usage.templateLimit} / 14</Text>
                 </BlockStack>
+                {subscription?.currentPeriodEnd && subscription.status === "ACTIVE" && (
+                  <BlockStack gap="100">
+                    <Text as="p" variant="bodySm" tone="subdued">Next Billing Date</Text>
+                    <Text as="p" variant="headingMd">{formatDate(subscription.currentPeriodEnd)}</Text>
+                  </BlockStack>
+                )}
               </InlineStack>
             </Card>
           </Layout.Section>
         )}
 
-        {/* Pricing Cards */}
+        {/* ── Pricing Cards ──────────────────────────────────────────────────── */}
         <Layout.Section>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "20px" }}>
             {plans.map((plan) => {
-              const style = PLAN_STYLES[plan.id] ?? PLAN_STYLES["FREE"];
-              const isCurrentPlan = plan.id === currentPlan;
+              const style = (PLAN_STYLES[plan.id] ?? PLAN_STYLES["FREE"])!;
+              // isCurrent is already correctly computed by the backend
+              // (only true if plan matches AND subscription is ACTIVE)
+              const isCurrentPlan = plan.isCurrent;
               const isPopular = plan.id === "PRO";
+              const isPending = subscription?.pendingPlan === plan.id;
 
               return (
                 <div
                   key={plan.id}
                   style={{
-                    border: isCurrentPlan ? `2px solid ${style.accent}` : "1px solid #e1e3e5",
+                    border: isCurrentPlan ? `2px solid ${style.accent}` : isPending ? `2px dashed ${style.accent}` : "1px solid #e1e3e5",
                     borderRadius: "16px",
                     overflow: "hidden",
                     position: "relative",
@@ -209,7 +298,7 @@ export function Billing() {
                     (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
                   }}
                 >
-                  {isPopular && (
+                  {isPopular && !isCurrentPlan && !isPending && (
                     <div style={{ position: "absolute", top: "16px", right: "16px", background: style.accent, color: "#fff", fontSize: "11px", fontWeight: 700, padding: "3px 10px", borderRadius: "12px" }}>
                       POPULAR
                     </div>
@@ -217,6 +306,11 @@ export function Billing() {
                   {isCurrentPlan && (
                     <div style={{ position: "absolute", top: "16px", left: "16px", background: style.accent, color: "#fff", fontSize: "11px", fontWeight: 700, padding: "3px 10px", borderRadius: "12px" }}>
                       CURRENT
+                    </div>
+                  )}
+                  {isPending && (
+                    <div style={{ position: "absolute", top: "16px", left: "16px", background: "#f59e0b", color: "#fff", fontSize: "11px", fontWeight: 700, padding: "3px 10px", borderRadius: "12px" }}>
+                      PENDING APPROVAL
                     </div>
                   )}
 
@@ -265,6 +359,15 @@ export function Billing() {
                           <Button fullWidth disabled id={`plan-current-${plan.id}`}>
                             Current Plan
                           </Button>
+                        ) : isPending ? (
+                          // Awaiting merchant approval on Shopify
+                          <Button
+                            fullWidth
+                            disabled
+                            id={`plan-pending-${plan.id}`}
+                          >
+                            Awaiting Approval…
+                          </Button>
                         ) : plan.id === "FREE" && currentPlan !== "FREE" ? (
                           <Button
                             fullWidth
@@ -284,7 +387,9 @@ export function Billing() {
                             onClick={() => void handleSubscribe(plan.id)}
                             id={`plan-subscribe-${plan.id}`}
                           >
-                            {currentPlan === "FREE" || currentPlan < plan.id
+                            {currentPlan === "FREE" || subscription?.status !== "ACTIVE"
+                              ? `Subscribe to ${plan.name}`
+                              : currentPlan < plan.id
                               ? `Upgrade to ${plan.name}`
                               : `Switch to ${plan.name}`}
                           </Button>
@@ -310,6 +415,8 @@ export function Billing() {
               </Text>
               <Text as="p" variant="bodySm" tone="subdued">
                 Payments are processed securely by Shopify. You can cancel anytime from your Shopify Admin under Apps.
+                If you reinstall the app after uninstalling, your previous subscription will not be automatically restored —
+                you will need to re-subscribe to your preferred plan.
               </Text>
             </BlockStack>
           </Card>

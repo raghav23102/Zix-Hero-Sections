@@ -8,6 +8,7 @@ import { requireShop } from "../middleware/requireShop.js";
 import {
   createShopifySubscription,
   cancelShopifySubscription,
+  confirmSubscription,
 } from "../services/billingService.js";
 import { Plan, PLAN_LIMITS, PLAN_PRICES } from "../shared/types.js";
 
@@ -17,7 +18,10 @@ billingRouter.use(requireShop);
 // GET /api/billing — current plan and pricing info
 billingRouter.get("/", async (req, res) => {
   const shop = res.locals["shop"];
-  const currentPlan: Plan = shop.subscription?.plan ?? "FREE";
+  const sub = shop.subscription;
+  const currentPlan: Plan = sub?.plan ?? "FREE";
+  // Only show the plan as "current" if the subscription is ACTIVE
+  const isSubscriptionActive = sub?.status === "ACTIVE";
 
   const plans = [
     {
@@ -33,7 +37,8 @@ billingRouter.get("/", async (req, res) => {
         "Responsive design",
         "Theme Editor support",
       ],
-      isCurrent: currentPlan === "FREE",
+      // FREE plan is "current" when plan is FREE and no pending upgrade
+      isCurrent: currentPlan === "FREE" && !sub?.pendingPlan,
     },
     {
       id: "BASIC",
@@ -48,7 +53,7 @@ billingRouter.get("/", async (req, res) => {
         "Responsive controls",
         "Product Showcase & Fashion layouts",
       ],
-      isCurrent: currentPlan === "BASIC",
+      isCurrent: currentPlan === "BASIC" && isSubscriptionActive,
     },
     {
       id: "PRO",
@@ -65,7 +70,7 @@ billingRouter.get("/", async (req, res) => {
         "Countdown Timer",
         "Gradient layouts",
       ],
-      isCurrent: currentPlan === "PRO",
+      isCurrent: currentPlan === "PRO" && isSubscriptionActive,
     },
     {
       id: "ULTIMATE",
@@ -82,7 +87,7 @@ billingRouter.get("/", async (req, res) => {
         "Premium Editorial",
         "Priority support",
       ],
-      isCurrent: currentPlan === "ULTIMATE",
+      isCurrent: currentPlan === "ULTIMATE" && isSubscriptionActive,
     },
   ];
 
@@ -90,7 +95,16 @@ billingRouter.get("/", async (req, res) => {
     success: true,
     data: {
       currentPlan,
-      subscription: shop.subscription,
+      subscription: sub
+        ? {
+            plan: sub.plan,
+            pendingPlan: sub.pendingPlan ?? null,
+            status: sub.status,
+            cancelledAt: sub.cancelledAt ?? null,
+            currentPeriodEnd: sub.currentPeriodEnd ?? null,
+            shopifyConfirmationUrl: sub.shopifyConfirmationUrl ?? null,
+          }
+        : null,
       plans,
     },
   });
@@ -171,7 +185,8 @@ billingRouter.post("/cancel", async (req, res) => {
   });
 });
 
-// GET /api/billing/confirm — called after Shopify redirects back
+// GET /api/billing/confirm — called after Shopify redirects back post-approval
+// BUG FIX (Bug A): We now verify the charge status with Shopify before activating.
 billingRouter.get("/confirm", async (req, res) => {
   const shop = res.locals["shop"];
   const chargeId = req.query["charge_id"] as string;
@@ -181,10 +196,19 @@ billingRouter.get("/confirm", async (req, res) => {
     return;
   }
 
-  const { confirmSubscription } = await import(
-    "../services/billingService.js"
-  );
-  await confirmSubscription(shop.shopDomain, chargeId);
+  const result = await confirmSubscription(shop.shopDomain, chargeId);
 
-  res.json({ success: true, message: "Subscription activated!" });
+  if (result.success) {
+    res.json({ success: true, message: "Subscription activated!" });
+  } else if (result.status === "DECLINED") {
+    res.status(200).json({
+      success: false,
+      error: "The charge was declined. No changes have been made to your plan.",
+    });
+  } else {
+    res.status(200).json({
+      success: false,
+      error: `Could not activate subscription (status: ${result.status}). Please try again.`,
+    });
+  }
 });
