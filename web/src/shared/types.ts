@@ -15,9 +15,9 @@ export const PLAN_LIMITS: Record<Plan, { sections: number; templates: number }> 
   };
 
 export const PLAN_PRICES: Record<Exclude<Plan, "FREE">, number> = {
-  BASIC: parseFloat(process.env["PRICE_BASIC"] ?? "9.99"),
-  PRO: parseFloat(process.env["PRICE_PRO"] ?? "19.99"),
-  ULTIMATE: parseFloat(process.env["PRICE_ULTIMATE"] ?? "39.99"),
+  BASIC: parseFloat(process.env["PRICE_BASIC"] ?? "29"),
+  PRO: parseFloat(process.env["PRICE_PRO"] ?? "79"),
+  ULTIMATE: parseFloat(process.env["PRICE_ULTIMATE"] ?? "119"),
 };
 
 export const PLAN_DISPLAY_NAMES: Record<Plan, string> = {

@@ -186,12 +186,14 @@ export async function createShopifySubscription(
       $lineItems: [AppSubscriptionLineItemInput!]!
       $returnUrl: URL!
       $test: Boolean
+      $trialDays: Int
     ) {
       appSubscriptionCreate(
         name: $name
         lineItems: $lineItems
         returnUrl: $returnUrl
         test: $test
+        trialDays: $trialDays
       ) {
         userErrors { field message }
         confirmationUrl
@@ -201,7 +203,8 @@ export async function createShopifySubscription(
   `, {
     name: PLAN_NAMES[plan],
     returnUrl,
-    test: true,
+    test: false,
+    trialDays: 0,
     lineItems: [{
       plan: {
         appRecurringPricingDetails: {
